@@ -5,7 +5,7 @@ import { Tournament, Player, Round, Match, GameResult, TournamentPhase } from '@
 import { loadTournaments, saveTournaments } from '@/lib/storage';
 
 // Actions
-type TournamentAction =
+export type TournamentAction =
   | { type: 'LOAD_TOURNAMENTS'; payload: Tournament[] }
   | { type: 'CREATE_TOURNAMENT'; payload: { name: string; bestOf: number } }
   | { type: 'DELETE_TOURNAMENT'; payload: string }

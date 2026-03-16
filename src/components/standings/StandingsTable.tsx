@@ -59,7 +59,7 @@ export default function StandingsTable({ standings, showTiebreakers = true }: St
             <TableRow
               key={s.playerId}
               sx={{
-                backgroundColor: s.rank <= 3 ? `rgba(25, 118, 210, ${0.12 - (s.rank - 1) * 0.03})` : undefined,
+                backgroundColor: s.rank <= 3 ? `rgba(0, 188, 212, ${0.15 - (s.rank - 1) * 0.04})` : undefined,
                 opacity: s.isDropped ? 0.5 : 1,
               }}
             >

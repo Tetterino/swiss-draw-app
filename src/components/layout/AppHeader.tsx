@@ -16,14 +16,22 @@ export default function AppHeader({ title, backHref }: AppHeaderProps) {
   const router = useRouter();
 
   return (
-    <AppBar position="static" elevation={1}>
+    <AppBar
+      position="static"
+      elevation={0}
+      sx={{
+        background: 'rgba(18, 18, 18, 0.85)',
+        backdropFilter: 'blur(8px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+      }}
+    >
       <Toolbar>
         {backHref && (
           <IconButton edge="start" color="inherit" onClick={() => router.push(backHref)} sx={{ mr: 1 }}>
             <ArrowBackIcon />
           </IconButton>
         )}
-        <Typography variant="h6" component="h1" sx={{ flexGrow: 1, fontWeight: 700 }}>
+        <Typography variant="h6" component="h1" sx={{ flexGrow: 1, fontWeight: 700, color: '#00bcd4' }}>
           {title}
         </Typography>
       </Toolbar>

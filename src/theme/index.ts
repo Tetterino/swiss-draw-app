@@ -7,14 +7,16 @@ const theme = createTheme({
     fontFamily: '"Noto Sans JP", "Roboto", "Helvetica", "Arial", sans-serif',
   },
   palette: {
+    mode: 'dark',
     primary: {
-      main: '#1976d2',
+      main: '#00bcd4',
     },
     secondary: {
-      main: '#9c27b0',
+      main: '#e040fb',
     },
     background: {
-      default: '#f5f5f5',
+      default: '#121212',
+      paper: '#1e1e1e',
     },
   },
   components: {
@@ -22,6 +24,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 12,
+          backgroundImage: 'none',
         },
       },
     },
@@ -31,6 +34,16 @@ const theme = createTheme({
           borderRadius: 8,
           textTransform: 'none',
           fontWeight: 600,
+          '&:hover': {
+            boxShadow: '0 0 8px rgba(0, 188, 212, 0.4)',
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
         },
       },
     },
