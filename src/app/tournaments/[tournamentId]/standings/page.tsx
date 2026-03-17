@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
@@ -7,8 +8,10 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import HomeIcon from '@mui/icons-material/Home';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import UndoIcon from '@mui/icons-material/Undo';
 import AppHeader from '@/components/layout/AppHeader';
 import NavigationStepper from '@/components/layout/NavigationStepper';
+import ConfirmDialog from '@/components/layout/ConfirmDialog';
 import StandingsTable from '@/components/standings/StandingsTable';
 import { useTournament } from '@/hooks/useTournament';
 import { useStandings } from '@/hooks/useStandings';
@@ -16,7 +19,8 @@ import { useStandings } from '@/hooks/useStandings';
 export default function StandingsPage() {
   const params = useParams();
   const router = useRouter();
-  const { getTournament } = useTournament();
+  const { getTournament, dispatch } = useTournament();
+  const [confirmUndo, setConfirmUndo] = useState(false);
 
   const tournamentId = params.tournamentId as string;
   const tournament = getTournament(tournamentId);
@@ -25,6 +29,13 @@ export default function StandingsPage() {
   if (!tournament) return null;
 
   const winner = standings.length > 0 ? standings[0] : null;
+  const lastRound = tournament.rounds.length;
+
+  const handleUndoFinish = () => {
+    dispatch({ type: 'UNDO_LAST_ROUND', payload: { tournamentId } });
+    setConfirmUndo(false);
+    router.push(`/tournaments/${tournamentId}/rounds/${lastRound}`);
+  };
 
   return (
     <>
@@ -54,7 +65,17 @@ export default function StandingsPage() {
 
         <StandingsTable standings={standings} />
 
-        <Box sx={{ mt: 3, textAlign: 'center' }}>
+        <Box sx={{ mt: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+          {tournament.phase === 'finished' && (
+            <Button
+              variant="outlined"
+              color="warning"
+              startIcon={<UndoIcon />}
+              onClick={() => setConfirmUndo(true)}
+            >
+              最終ラウンドを再開する
+            </Button>
+          )}
           <Button
             variant="outlined"
             startIcon={<HomeIcon />}
@@ -63,6 +84,15 @@ export default function StandingsPage() {
             トップに戻る
           </Button>
         </Box>
+
+        <ConfirmDialog
+          open={confirmUndo}
+          title="最終ラウンドを再開"
+          message={`大会終了を取り消し、ラウンド ${lastRound} の結果を修正できるようにしますか？`}
+          confirmLabel="再開"
+          onConfirm={handleUndoFinish}
+          onCancel={() => setConfirmUndo(false)}
+        />
       </Container>
     </>
   );
