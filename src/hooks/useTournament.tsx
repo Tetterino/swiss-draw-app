@@ -17,7 +17,8 @@ export type TournamentAction =
   | { type: 'UPDATE_MATCH_RESULT'; payload: { tournamentId: string; roundNumber: number; matchId: string; games: GameResult; winnerId: string | null; isDraw: boolean } }
   | { type: 'COMPLETE_ROUND'; payload: { tournamentId: string; roundNumber: number } }
   | { type: 'ADD_ROUND'; payload: { tournamentId: string; round: Round } }
-  | { type: 'FINISH_TOURNAMENT'; payload: string };
+  | { type: 'FINISH_TOURNAMENT'; payload: string }
+  | { type: 'UNDO_LAST_ROUND'; payload: { tournamentId: string } };
 
 interface TournamentState {
   tournaments: Tournament[];
@@ -191,6 +192,30 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
         tournaments: state.tournaments.map((t) => {
           if (t.id !== action.payload) return t;
           return { ...t, phase: 'finished' as TournamentPhase };
+        }),
+      };
+    }
+
+    case 'UNDO_LAST_ROUND': {
+      return {
+        ...state,
+        tournaments: state.tournaments.map((t) => {
+          if (t.id !== action.payload.tournamentId) return t;
+          if (t.phase === 'finished') {
+            // Re-open the last round
+            return {
+              ...t,
+              phase: 'rounds' as TournamentPhase,
+              rounds: t.rounds.map((r, i) =>
+                i === t.rounds.length - 1 ? { ...r, isCompleted: false } : r
+              ),
+            };
+          }
+          // Remove the latest round and re-open the previous one
+          const newRounds = t.rounds.slice(0, -1).map((r, i, arr) =>
+            i === arr.length - 1 ? { ...r, isCompleted: false } : r
+          );
+          return { ...t, rounds: newRounds };
         }),
       };
     }
