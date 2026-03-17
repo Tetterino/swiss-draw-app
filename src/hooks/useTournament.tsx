@@ -33,6 +33,13 @@ function calculateTotalRounds(playerCount: number): number {
   return Math.ceil(Math.log2(playerCount));
 }
 
+export function resolvePlayerName(name: string, existingNames: string[]): string {
+  if (!existingNames.includes(name)) return name;
+  let n = 2;
+  while (existingNames.includes(`${name} (${n})`)) n++;
+  return `${name} (${n})`;
+}
+
 function tournamentReducer(state: TournamentState, action: TournamentAction): TournamentState {
   switch (action.type) {
     case 'LOAD_TOURNAMENTS':
@@ -60,7 +67,8 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
         ...state,
         tournaments: state.tournaments.map((t) => {
           if (t.id !== action.payload.tournamentId) return t;
-          const newPlayer: Player = { id: generateId(), name: action.payload.name, status: 'active' };
+          const resolvedName = resolvePlayerName(action.payload.name, t.players.map((p) => p.name));
+          const newPlayer: Player = { id: generateId(), name: resolvedName, status: 'active' };
           return { ...t, players: [...t.players, newPlayer] };
         }),
       };
@@ -71,11 +79,12 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
         ...state,
         tournaments: state.tournaments.map((t) => {
           if (t.id !== action.payload.tournamentId) return t;
-          const newPlayers: Player[] = action.payload.names.map((name) => ({
-            id: generateId(),
-            name,
-            status: 'active' as const,
-          }));
+          const allNames = t.players.map((p) => p.name);
+          const newPlayers: Player[] = action.payload.names.map((name) => {
+            const resolvedName = resolvePlayerName(name, allNames);
+            allNames.push(resolvedName);
+            return { id: generateId(), name: resolvedName, status: 'active' as const };
+          });
           return { ...t, players: [...t.players, ...newPlayers] };
         }),
       };
