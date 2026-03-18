@@ -21,13 +21,13 @@ interface TournamentCreateFormProps {
 export default function TournamentCreateForm({ onSubmit }: TournamentCreateFormProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [bestOf, setBestOf] = useState(3);
+  const [bestOf, setBestOf] = useState(1);
 
   const handleSubmit = () => {
     if (name.trim()) {
       onSubmit(name.trim(), bestOf);
       setName('');
-      setBestOf(3);
+      setBestOf(1);
       setOpen(false);
     }
   };

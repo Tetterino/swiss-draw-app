@@ -156,9 +156,19 @@ export function calculateStandings(tournament: Tournament): PlayerStanding[] {
     return b.ogwPercent - a.ogwPercent;
   });
 
-  // Assign ranks
+  // Assign ranks (tied players share the same rank)
   standings.forEach((s, i) => {
-    s.rank = i + 1;
+    if (i === 0) {
+      s.rank = 1;
+    } else {
+      const prev = standings[i - 1];
+      const isTied =
+        s.matchPoints === prev.matchPoints &&
+        s.omwPercent === prev.omwPercent &&
+        s.gwPercent === prev.gwPercent &&
+        s.ogwPercent === prev.ogwPercent;
+      s.rank = isTied ? prev.rank : i + 1;
+    }
   });
 
   return standings;

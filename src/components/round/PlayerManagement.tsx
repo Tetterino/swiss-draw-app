@@ -15,10 +15,11 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import ConfirmDialog from '@/components/layout/ConfirmDialog';
 import { Tournament } from '@/types';
+import { TournamentAction } from '@/hooks/useTournament';
 
 interface PlayerManagementProps {
   tournament: Tournament;
-  dispatch: React.Dispatch<any>;
+  dispatch: React.Dispatch<TournamentAction>;
 }
 
 export default function PlayerManagement({ tournament, dispatch }: PlayerManagementProps) {

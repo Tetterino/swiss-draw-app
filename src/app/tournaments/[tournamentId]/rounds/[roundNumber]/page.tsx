@@ -11,13 +11,12 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import UndoIcon from '@mui/icons-material/Undo';
 import AppHeader from '@/components/layout/AppHeader';
 import NavigationStepper from '@/components/layout/NavigationStepper';
 import ConfirmDialog from '@/components/layout/ConfirmDialog';
 import MatchCard from '@/components/round/MatchCard';
 import RoundProgressBar from '@/components/round/RoundProgressBar';
-import PlayerManagement from '@/components/round/PlayerManagement';
 import StandingsTable from '@/components/standings/StandingsTable';
 import { useTournament } from '@/hooks/useTournament';
 import { useStandings } from '@/hooks/useStandings';
@@ -36,6 +35,8 @@ export default function RoundPage() {
   const { getTournament, dispatch } = useTournament();
   const [confirmNext, setConfirmNext] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [confirmUndo, setConfirmUndo] = useState(false);
+  const [dropTarget, setDropTarget] = useState<{ id: string; name: string } | null>(null);
   const [showStandings, setShowStandings] = useState(false);
   const [pendingResults, setPendingResults] = useState<Record<string, PendingResult>>({});
 
@@ -53,26 +54,32 @@ export default function RoundPage() {
   const allMatchesCompleted = nonByeMatches.every((m) => m.isCompleted);
   const isLatestRound = roundNumber === tournament.rounds.length;
 
-  // Check if all non-bye matches have pending results (for batch confirm)
-  const allMatchesHavePendingOrCompleted = nonByeMatches.every(
+  // All non-bye matches either already completed or have pending input
+  const allMatchesReady = nonByeMatches.every(
     (m) => m.isCompleted || pendingResults[m.id]
   );
   const hasPendingResults = Object.keys(pendingResults).length > 0;
-  const canBatchConfirm = !allMatchesCompleted && allMatchesHavePendingOrCompleted && hasPendingResults;
 
   const isLastRound = roundNumber >= tournament.totalRounds;
   const standingsTabIndex = tournament.rounds.length;
   const currentTabValue = showStandings ? standingsTabIndex : roundNumber - 1;
 
   const handleChangeResult = (matchId: string, games: GameResult, winnerId: string | null, isDraw: boolean) => {
-    setPendingResults((prev) => ({
-      ...prev,
-      [matchId]: { games, winnerId, isDraw },
-    }));
+    if (games.player1Wins === 0 && games.player2Wins === 0 && games.draws === 0) {
+      setPendingResults((prev) => {
+        const next = { ...prev };
+        delete next[matchId];
+        return next;
+      });
+    } else {
+      setPendingResults((prev) => ({
+        ...prev,
+        [matchId]: { games, winnerId, isDraw },
+      }));
+    }
   };
 
-  const handleBatchConfirm = () => {
-    // Dispatch all pending results at once
+  const confirmPendingResults = () => {
     for (const [matchId, result] of Object.entries(pendingResults)) {
       dispatch({
         type: 'UPDATE_MATCH_RESULT',
@@ -90,6 +97,7 @@ export default function RoundPage() {
   };
 
   const handleNextRound = () => {
+    confirmPendingResults();
     dispatch({ type: 'COMPLETE_ROUND', payload: { tournamentId, roundNumber } });
 
     const nextRound = generatePairings(
@@ -105,11 +113,43 @@ export default function RoundPage() {
   };
 
   const handleFinishTournament = () => {
+    confirmPendingResults();
     dispatch({ type: 'COMPLETE_ROUND', payload: { tournamentId, roundNumber } });
     dispatch({ type: 'FINISH_TOURNAMENT', payload: tournamentId });
     setConfirmFinish(false);
     router.push(`/tournaments/${tournamentId}/standings`);
   };
+
+  const handleUndoRound = () => {
+    dispatch({ type: 'UNDO_LAST_ROUND', payload: { tournamentId } });
+    setConfirmUndo(false);
+    if (tournament.phase === 'finished') {
+      // Stay on the same round (just re-opened)
+      router.refresh();
+    } else {
+      router.push(`/tournaments/${tournamentId}/rounds/${roundNumber - 1}`);
+    }
+  };
+
+  const handleDropPlayer = () => {
+    if (!dropTarget) return;
+    dispatch({
+      type: 'DROP_PLAYER',
+      payload: { tournamentId, playerId: dropTarget.id },
+    });
+    setDropTarget(null);
+  };
+
+  // Sort matches: by combined match points (descending), BYE at bottom
+  const standingMap = new Map(standings.map((s) => [s.playerId, s.matchPoints]));
+  const sortedMatches = [...round.matches].sort((a, b) => {
+    if (a.isBye !== b.isBye) return a.isBye ? 1 : -1;
+    const totalA = (standingMap.get(a.player1Id) ?? 0) + (standingMap.get(a.player2Id ?? '') ?? 0);
+    const totalB = (standingMap.get(b.player1Id) ?? 0) + (standingMap.get(b.player2Id ?? '') ?? 0);
+    return totalB - totalA;
+  });
+
+  const canDrop = isLatestRound && !round.isCompleted;
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     if (newValue === standingsTabIndex) {
@@ -157,15 +197,7 @@ export default function RoundPage() {
             </Box>
 
             <Stack spacing={1.5}>
-              {[...round.matches]
-                .sort((a, b) => {
-                  if (a.isBye !== b.isBye) return a.isBye ? 1 : -1;
-                  const standingMap = new Map(standings.map((s) => [s.playerId, s.matchPoints]));
-                  const totalA = (standingMap.get(a.player1Id) ?? 0) + (standingMap.get(a.player2Id ?? '') ?? 0);
-                  const totalB = (standingMap.get(b.player1Id) ?? 0) + (standingMap.get(b.player2Id ?? '') ?? 0);
-                  return totalB - totalA;
-                })
-                .map((match) => (
+              {sortedMatches.map((match) => (
                 <MatchCard
                   key={match.id}
                   match={match}
@@ -174,26 +206,13 @@ export default function RoundPage() {
                   onChangeResult={handleChangeResult}
                   tableNumber={match.isBye ? 0 : round.matches.filter((m) => !m.isBye).indexOf(match) + 1}
                   pendingResult={pendingResults[match.id]}
+                  canDrop={canDrop}
+                  onDropPlayer={(playerId, playerName) => setDropTarget({ id: playerId, name: playerName })}
                 />
               ))}
             </Stack>
 
-            {canBatchConfirm && (
-              <Box sx={{ mt: 3 }}>
-                <Button
-                  variant="contained"
-                  size="large"
-                  fullWidth
-                  startIcon={<CheckCircleIcon />}
-                  onClick={handleBatchConfirm}
-                  sx={{ py: 1.5 }}
-                >
-                  ラウンド結果を一括確定
-                </Button>
-              </Box>
-            )}
-
-            {allMatchesCompleted && !round.isCompleted && (
+            {(allMatchesCompleted || (allMatchesReady && hasPendingResults)) && !round.isCompleted && (
               <Box sx={{ mt: 3 }}>
                 {isLastRound ? (
                   <Button
@@ -222,12 +241,22 @@ export default function RoundPage() {
               </Box>
             )}
 
-            {isLatestRound && !round.isCompleted && (
-              <PlayerManagement
-                tournament={tournament}
-                dispatch={dispatch}
-              />
+            {isLatestRound && tournament.rounds.length >= 2 && (!round.isCompleted || tournament.phase === 'finished') && (
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  size="large"
+                  fullWidth
+                  startIcon={<UndoIcon />}
+                  onClick={() => setConfirmUndo(true)}
+                  sx={{ py: 1.5 }}
+                >
+                  {tournament.phase === 'finished' ? '最終ラウンドを再開する' : '前のラウンドに戻す'}
+                </Button>
+              </Box>
             )}
+
           </>
         )}
 
@@ -247,6 +276,28 @@ export default function RoundPage() {
           confirmLabel="終了"
           onConfirm={handleFinishTournament}
           onCancel={() => setConfirmFinish(false)}
+        />
+
+        <ConfirmDialog
+          open={!!dropTarget}
+          title="プレイヤーをドロップ"
+          message={`${dropTarget?.name ?? ''} を大会からドロップ（途中辞退）しますか？この操作は取り消せません。`}
+          confirmLabel="ドロップ"
+          onConfirm={handleDropPlayer}
+          onCancel={() => setDropTarget(null)}
+        />
+
+        <ConfirmDialog
+          open={confirmUndo}
+          title={tournament.phase === 'finished' ? '最終ラウンドを再開' : 'ラウンドを戻す'}
+          message={
+            tournament.phase === 'finished'
+              ? `大会終了を取り消し、ラウンド ${roundNumber} の結果を修正できるようにしますか？`
+              : `ラウンド ${roundNumber} を削除して、ラウンド ${roundNumber - 1} に戻しますか？前ラウンドの結果はそのまま残ります。`
+          }
+          confirmLabel={tournament.phase === 'finished' ? '再開' : '戻す'}
+          onConfirm={handleUndoRound}
+          onCancel={() => setConfirmUndo(false)}
         />
       </Container>
     </>
