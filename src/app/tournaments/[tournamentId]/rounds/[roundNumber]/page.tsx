@@ -157,14 +157,22 @@ export default function RoundPage() {
             </Box>
 
             <Stack spacing={1.5}>
-              {round.matches.map((match, idx) => (
+              {[...round.matches]
+                .sort((a, b) => {
+                  if (a.isBye !== b.isBye) return a.isBye ? 1 : -1;
+                  const standingMap = new Map(standings.map((s) => [s.playerId, s.matchPoints]));
+                  const totalA = (standingMap.get(a.player1Id) ?? 0) + (standingMap.get(a.player2Id ?? '') ?? 0);
+                  const totalB = (standingMap.get(b.player1Id) ?? 0) + (standingMap.get(b.player2Id ?? '') ?? 0);
+                  return totalB - totalA;
+                })
+                .map((match) => (
                 <MatchCard
                   key={match.id}
                   match={match}
                   players={tournament.players}
                   bestOf={tournament.bestOf}
                   onChangeResult={handleChangeResult}
-                  tableNumber={match.isBye ? 0 : idx + 1 - round.matches.filter((m, i) => i < idx && m.isBye).length}
+                  tableNumber={match.isBye ? 0 : round.matches.filter((m) => !m.isBye).indexOf(match) + 1}
                   pendingResult={pendingResults[match.id]}
                 />
               ))}
