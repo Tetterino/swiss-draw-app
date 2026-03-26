@@ -103,6 +103,15 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
     backgroundColor: 'action.hover',
   } as const;
 
+  const playerZoneSx = {
+    ...zoneSx,
+    flex: 1,
+    userSelect: 'none',
+    WebkitTouchCallout: 'none',
+    transition: 'background-color 0.1s',
+    '&:active': { backgroundColor: 'action.selected' },
+  } as const;
+
   const dropButtonSx = {
     display: 'flex',
     alignItems: 'center',
@@ -227,9 +236,13 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
           </Box>
         </Box>
 
-        {/* Display zones */}
+        {/* Score zones — player name tappable for +1 */}
         <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 0.5 }}>
-          <Box sx={{ ...zoneSx, flex: 1 }}>
+          <ButtonBase
+            sx={playerZoneSx}
+            onClick={() => { if (canAdd && p1Wins < winsNeeded) setP1Wins((v) => v + 1); }}
+            disabled={inputDisabled || !canAdd || p1Wins >= winsNeeded}
+          >
             <Typography
               variant="body2"
               sx={{
@@ -242,7 +255,7 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
             >
               {player1.name}
             </Typography>
-          </Box>
+          </ButtonBase>
 
           <Box sx={{ ...zoneSx, minWidth: 72 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, ...(displayBothLoss ? { color: 'error.main' } : {}) }}>
@@ -259,7 +272,11 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
             ) : null}
           </Box>
 
-          <Box sx={{ ...zoneSx, flex: 1 }}>
+          <ButtonBase
+            sx={playerZoneSx}
+            onClick={() => { if (canAdd && p2Wins < winsNeeded) setP2Wins((v) => v + 1); }}
+            disabled={inputDisabled || !canAdd || p2Wins >= winsNeeded}
+          >
             <Typography
               variant="body2"
               sx={{
@@ -272,7 +289,7 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
             >
               {player2.name}
             </Typography>
-          </Box>
+          </ButtonBase>
         </Box>
 
         {/* Controls row: +/- buttons and both-loss */}
