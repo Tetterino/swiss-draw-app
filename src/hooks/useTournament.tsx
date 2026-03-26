@@ -14,7 +14,7 @@ export type TournamentAction =
   | { type: 'REMOVE_PLAYER'; payload: { tournamentId: string; playerId: string } }
   | { type: 'DROP_PLAYER'; payload: { tournamentId: string; playerId: string } }
   | { type: 'START_TOURNAMENT'; payload: { tournamentId: string; rounds: Round[] } }
-  | { type: 'UPDATE_MATCH_RESULT'; payload: { tournamentId: string; roundNumber: number; matchId: string; games: GameResult; winnerId: string | null; isDraw: boolean } }
+  | { type: 'UPDATE_MATCH_RESULT'; payload: { tournamentId: string; roundNumber: number; matchId: string; games: GameResult; winnerId: string | null; isDraw: boolean; isBothLoss: boolean } }
   | { type: 'COMPLETE_ROUND'; payload: { tournamentId: string; roundNumber: number } }
   | { type: 'ADD_ROUND'; payload: { tournamentId: string; round: Round } }
   | { type: 'FINISH_TOURNAMENT'; payload: string }
@@ -150,6 +150,7 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
                     games: action.payload.games,
                     winnerId: action.payload.winnerId,
                     isDraw: action.payload.isDraw,
+                    isBothLoss: action.payload.isBothLoss,
                     isCompleted: true,
                   };
                 }),

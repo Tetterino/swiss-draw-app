@@ -139,6 +139,7 @@ function tryPairing(
         winnerId: null,
         isBye: false,
         isDraw: false,
+        isBothLoss: false,
         isCompleted: false,
       });
 

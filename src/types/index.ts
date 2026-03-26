@@ -21,6 +21,7 @@ export interface Match {
   winnerId: string | null;
   isBye: boolean;
   isDraw: boolean;
+  isBothLoss: boolean;
   isCompleted: boolean;
 }
 

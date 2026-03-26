@@ -25,6 +25,21 @@ function mkMatch(
     winnerId,
     isBye: false,
     isDraw,
+    isBothLoss: false,
+    isCompleted: true,
+  };
+}
+
+function mkBothLossMatch(p1: string, p2: string): Match {
+  return {
+    id: `bl-${p1}-${p2}`,
+    player1Id: p1,
+    player2Id: p2,
+    games: { player1Wins: 0, player2Wins: 0, draws: 0 },
+    winnerId: null,
+    isBye: false,
+    isDraw: false,
+    isBothLoss: true,
     isCompleted: true,
   };
 }
@@ -38,6 +53,7 @@ function mkByeMatch(playerId: string): Match {
     winnerId: playerId,
     isBye: true,
     isDraw: false,
+    isBothLoss: false,
     isCompleted: true,
   };
 }
@@ -182,6 +198,7 @@ describe('calculateStandings', () => {
       winnerId: null,
       isBye: false,
       isDraw: true,
+      isBothLoss: false,
       isCompleted: true,
     };
     const rounds = [mkRound(1, [drawMatch])];
@@ -216,5 +233,41 @@ describe('calculateStandings', () => {
 
     const sB = standings.find((s) => s.playerId === 'B')!;
     expect(sB.gwPercent).toBeCloseTo(3 / 9, 5);
+  });
+
+  it('handles both-loss (double loss) — both players get 0 match points', () => {
+    const players = [mkPlayer('A'), mkPlayer('B')];
+    const rounds = [mkRound(1, [mkBothLossMatch('A', 'B')])];
+    const t = mkTournament(players, rounds);
+    const standings = calculateStandings(t);
+
+    const sA = standings.find((s) => s.playerId === 'A')!;
+    const sB = standings.find((s) => s.playerId === 'B')!;
+
+    expect(sA.matchPoints).toBe(0);
+    expect(sB.matchPoints).toBe(0);
+    expect(sA.matchLosses).toBe(1);
+    expect(sB.matchLosses).toBe(1);
+    expect(sA.matchWins).toBe(0);
+    expect(sB.matchWins).toBe(0);
+    expect(sA.matchDraws).toBe(0);
+    expect(sB.matchDraws).toBe(0);
+  });
+
+  it('both-loss does not count as draw (0 points, not 1)', () => {
+    const players = [mkPlayer('A'), mkPlayer('B'), mkPlayer('C')];
+    // A vs B: both loss (0 pts each), A vs C: A wins (3 pts)
+    const rounds = [
+      mkRound(1, [mkBothLossMatch('A', 'B')]),
+      mkRound(2, [mkMatch('A', 'C', 2, 0)]),
+    ];
+    const t = mkTournament(players, rounds);
+    const standings = calculateStandings(t);
+
+    const sA = standings.find((s) => s.playerId === 'A')!;
+    expect(sA.matchPoints).toBe(3); // 1 win (3) + 1 both-loss (0) = 3
+    expect(sA.matchWins).toBe(1);
+    expect(sA.matchLosses).toBe(1);
+    expect(sA.matchDraws).toBe(0);
   });
 });

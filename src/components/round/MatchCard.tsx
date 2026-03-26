@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import ButtonBase from '@mui/material/ButtonBase';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
 import ReplayIcon from '@mui/icons-material/Replay';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import { Match, Player, GameResult } from '@/types';
@@ -16,13 +17,14 @@ interface PendingResult {
   games: GameResult;
   winnerId: string | null;
   isDraw: boolean;
+  isBothLoss: boolean;
 }
 
 interface MatchCardProps {
   match: Match;
   players: Player[];
   bestOf: number;
-  onChangeResult: (matchId: string, games: GameResult, winnerId: string | null, isDraw: boolean) => void;
+  onChangeResult: (matchId: string, games: GameResult, winnerId: string | null, isDraw: boolean, isBothLoss: boolean) => void;
   tableNumber: number;
   pendingResult?: PendingResult;
   canDrop?: boolean;
@@ -89,14 +91,19 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
     useCallback(() => { if (draws > 0) setDraws((v) => v - 1); }, [draws]),
   );
 
+  // Both-loss state
+  const [isBothLoss, setIsBothLoss] = useState(
+    pendingResult ? pendingResult.isBothLoss : (match.isBothLoss ?? false)
+  );
+
   // Notify parent on score change
   useEffect(() => {
-    if (p1Wins + p2Wins + draws === 0) return;
+    if (p1Wins + p2Wins + draws === 0 && !isBothLoss) return;
 
     let winnerId: string | null = null;
     let isDraw = false;
 
-    if (player1 && player2) {
+    if (!isBothLoss && player1 && player2) {
       if (p1Wins > p2Wins) {
         winnerId = player1.id;
       } else if (p2Wins > p1Wins) {
@@ -106,15 +113,23 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
       }
     }
 
-    onChangeResult(match.id, { player1Wins: p1Wins, player2Wins: p2Wins, draws }, winnerId, isDraw);
-  }, [p1Wins, p2Wins, draws]); // eslint-disable-line react-hooks/exhaustive-deps
+    onChangeResult(match.id, { player1Wins: p1Wins, player2Wins: p2Wins, draws }, winnerId, isDraw, isBothLoss);
+  }, [p1Wins, p2Wins, draws, isBothLoss]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReset = () => {
     setP1Wins(0);
     setP2Wins(0);
     setDraws(0);
+    setIsBothLoss(false);
     // Explicitly notify parent to clear pending result
-    onChangeResult(match.id, { player1Wins: 0, player2Wins: 0, draws: 0 }, null, false);
+    onChangeResult(match.id, { player1Wins: 0, player2Wins: 0, draws: 0 }, null, false, false);
+  };
+
+  const handleBothLoss = () => {
+    setP1Wins(0);
+    setP2Wins(0);
+    setDraws(0);
+    setIsBothLoss(true);
   };
 
   if (!player1) return null;
@@ -220,7 +235,8 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
 
   // Display values
   const displayWinnerId = pendingResult ? pendingResult.winnerId : match.winnerId;
-  const hasInput = p1Wins + p2Wins + draws > 0;
+  const displayBothLoss = isBothLoss;
+  const hasInput = p1Wins + p2Wins + draws > 0 || isBothLoss;
 
   const statusChip = match.isCompleted ? (
     <Chip label="完了" size="small" color="success" variant="outlined" />
@@ -259,8 +275,8 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
           {/* Player 1 zone */}
           <ButtonBase
             sx={{ ...tapZoneSx, flex: 1 }}
-            {...(match.isCompleted ? {} : p1Press)}
-            disabled={match.isCompleted}
+            {...(match.isCompleted || displayBothLoss ? {} : p1Press)}
+            disabled={match.isCompleted || displayBothLoss}
           >
             <Typography
               variant="body2"
@@ -268,6 +284,7 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
                 fontWeight: displayWinnerId === player1.id ? 700 : 400,
                 width: '100%',
                 textAlign: 'center',
+                ...(displayBothLoss ? { color: 'error.main' } : {}),
               }}
               noWrap
             >
@@ -278,24 +295,28 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
           {/* Center score zone */}
           <ButtonBase
             sx={{ ...tapZoneSx, minWidth: 72 }}
-            {...(match.isCompleted || bestOf <= 1 ? {} : drawPress)}
-            disabled={match.isCompleted || bestOf <= 1}
+            {...(match.isCompleted || displayBothLoss || bestOf <= 1 ? {} : drawPress)}
+            disabled={match.isCompleted || displayBothLoss || bestOf <= 1}
           >
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, ...(displayBothLoss ? { color: 'error.main' } : {}) }}>
               {p1Wins} - {p2Wins}
             </Typography>
-            {bestOf > 1 && (
+            {displayBothLoss ? (
+              <Typography variant="caption" color="error">
+                両負け
+              </Typography>
+            ) : bestOf > 1 ? (
               <Typography variant="caption" color="text.secondary">
                 引分 {draws}
               </Typography>
-            )}
+            ) : null}
           </ButtonBase>
 
           {/* Player 2 zone */}
           <ButtonBase
             sx={{ ...tapZoneSx, flex: 1 }}
-            {...(match.isCompleted ? {} : p2Press)}
-            disabled={match.isCompleted}
+            {...(match.isCompleted || displayBothLoss ? {} : p2Press)}
+            disabled={match.isCompleted || displayBothLoss}
           >
             <Typography
               variant="body2"
@@ -303,6 +324,7 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
                 fontWeight: displayWinnerId === player2.id ? 700 : 400,
                 width: '100%',
                 textAlign: 'center',
+                ...(displayBothLoss ? { color: 'error.main' } : {}),
               }}
               noWrap
             >
@@ -310,6 +332,21 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
             </Typography>
           </ButtonBase>
         </Box>
+
+        {/* Both-loss button */}
+        {!match.isCompleted && !displayBothLoss && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              onClick={handleBothLoss}
+              sx={{ fontSize: '0.75rem', py: 0.25, px: 1.5 }}
+            >
+              両負け
+            </Button>
+          </Box>
+        )}
 
         {dropRow}
       </CardContent>
