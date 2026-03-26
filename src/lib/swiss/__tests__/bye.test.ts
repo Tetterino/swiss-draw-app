@@ -17,6 +17,7 @@ function mkByeMatch(playerId: string): Match {
     winnerId: playerId,
     isBye: true,
     isDraw: false,
+    isBothLoss: false,
     isCompleted: true,
   };
 }

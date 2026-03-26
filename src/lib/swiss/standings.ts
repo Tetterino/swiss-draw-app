@@ -59,7 +59,9 @@ function getMatchRecord(playerId: string, rounds: Round[]): MatchRecord {
       record.gameDraws += match.games.draws;
 
       // Match result
-      if (match.isDraw) {
+      if (match.isBothLoss) {
+        record.matchLosses++;
+      } else if (match.isDraw) {
         record.matchDraws++;
       } else if (match.winnerId === playerId) {
         record.matchWins++;

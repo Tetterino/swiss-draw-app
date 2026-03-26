@@ -24,6 +24,7 @@ function mkMatch(
     winnerId,
     isBye: false,
     isDraw,
+    isBothLoss: false,
     isCompleted: true,
   };
 }
@@ -125,5 +126,14 @@ describe('generatePairings', () => {
     const players = [mkPlayer('A'), mkPlayer('B')];
     const round = generatePairings(players, [], 3, players);
     expect(round.isCompleted).toBe(false);
+  });
+
+  it('generated matches include isBothLoss: false', () => {
+    const players = [mkPlayer('A'), mkPlayer('B'), mkPlayer('C')];
+    const round = generatePairings(players, [], 3, players);
+
+    for (const match of round.matches) {
+      expect(match.isBothLoss).toBe(false);
+    }
   });
 });

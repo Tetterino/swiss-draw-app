@@ -27,6 +27,7 @@ interface PendingResult {
   games: GameResult;
   winnerId: string | null;
   isDraw: boolean;
+  isBothLoss: boolean;
 }
 
 export default function RoundPage() {
@@ -64,8 +65,8 @@ export default function RoundPage() {
   const standingsTabIndex = tournament.rounds.length;
   const currentTabValue = showStandings ? standingsTabIndex : roundNumber - 1;
 
-  const handleChangeResult = (matchId: string, games: GameResult, winnerId: string | null, isDraw: boolean) => {
-    if (games.player1Wins === 0 && games.player2Wins === 0 && games.draws === 0) {
+  const handleChangeResult = (matchId: string, games: GameResult, winnerId: string | null, isDraw: boolean, isBothLoss: boolean) => {
+    if (games.player1Wins === 0 && games.player2Wins === 0 && games.draws === 0 && !isBothLoss) {
       setPendingResults((prev) => {
         const next = { ...prev };
         delete next[matchId];
@@ -74,7 +75,7 @@ export default function RoundPage() {
     } else {
       setPendingResults((prev) => ({
         ...prev,
-        [matchId]: { games, winnerId, isDraw },
+        [matchId]: { games, winnerId, isDraw, isBothLoss },
       }));
     }
   };
@@ -90,6 +91,7 @@ export default function RoundPage() {
           games: result.games,
           winnerId: result.winnerId,
           isDraw: result.isDraw,
+          isBothLoss: result.isBothLoss,
         },
       });
     }
