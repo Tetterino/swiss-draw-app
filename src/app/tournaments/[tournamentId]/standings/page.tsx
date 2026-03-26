@@ -9,6 +9,7 @@ import Button from '@mui/material/Button';
 import HomeIcon from '@mui/icons-material/Home';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import UndoIcon from '@mui/icons-material/Undo';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import AppHeader from '@/components/layout/AppHeader';
 import NavigationStepper from '@/components/layout/NavigationStepper';
 import ConfirmDialog from '@/components/layout/ConfirmDialog';
@@ -30,6 +31,31 @@ export default function StandingsPage() {
 
   const winner = standings.length > 0 ? standings[0] : null;
   const lastRound = tournament.rounds.length;
+
+  const handleExportCsv = () => {
+    const header = ['順位', 'プレイヤー', 'MP', '勝', '敗', '分', 'OMW%', 'GW%', 'OGW%', 'ステータス'];
+    const rows = standings.map((s) => [
+      s.rank,
+      s.playerName,
+      s.matchPoints,
+      s.matchWins,
+      s.matchLosses,
+      s.matchDraws,
+      (s.omwPercent * 100).toFixed(2),
+      (s.gwPercent * 100).toFixed(2),
+      (s.ogwPercent * 100).toFixed(2),
+      s.isDropped ? 'Dropped' : 'Active',
+    ]);
+    const bom = '\uFEFF';
+    const csv = bom + [header, ...rows].map((r) => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${tournament.name}_standings.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleUndoFinish = () => {
     dispatch({ type: 'UNDO_LAST_ROUND', payload: { tournamentId } });
@@ -66,6 +92,13 @@ export default function StandingsPage() {
         <StandingsTable standings={standings} />
 
         <Box sx={{ mt: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadIcon />}
+            onClick={handleExportCsv}
+          >
+            CSVエクスポート
+          </Button>
           {tournament.phase === 'finished' && (
             <Button
               variant="outlined"
