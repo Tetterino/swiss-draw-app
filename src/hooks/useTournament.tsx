@@ -12,6 +12,7 @@ export type TournamentAction =
   | { type: 'ADD_PLAYER'; payload: { tournamentId: string; name: string } }
   | { type: 'ADD_PLAYERS_BULK'; payload: { tournamentId: string; names: string[] } }
   | { type: 'REMOVE_PLAYER'; payload: { tournamentId: string; playerId: string } }
+  | { type: 'UPDATE_PLAYER'; payload: { tournamentId: string; playerId: string; name: string } }
   | { type: 'DROP_PLAYER'; payload: { tournamentId: string; playerId: string } }
   | { type: 'START_TOURNAMENT'; payload: { tournamentId: string; rounds: Round[] } }
   | { type: 'UPDATE_MATCH_RESULT'; payload: { tournamentId: string; roundNumber: number; matchId: string; games: GameResult; winnerId: string | null; isDraw: boolean; isBothLoss: boolean } }
@@ -97,6 +98,23 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
         tournaments: state.tournaments.map((t) => {
           if (t.id !== action.payload.tournamentId) return t;
           return { ...t, players: t.players.filter((p) => p.id !== action.payload.playerId) };
+        }),
+      };
+    }
+
+    case 'UPDATE_PLAYER': {
+      return {
+        ...state,
+        tournaments: state.tournaments.map((t) => {
+          if (t.id !== action.payload.tournamentId) return t;
+          const otherNames = t.players.filter((p) => p.id !== action.payload.playerId).map((p) => p.name);
+          const resolvedName = resolvePlayerName(action.payload.name.trim(), otherNames);
+          return {
+            ...t,
+            players: t.players.map((p) =>
+              p.id === action.payload.playerId ? { ...p, name: resolvedName } : p
+            ),
+          };
         }),
       };
     }
