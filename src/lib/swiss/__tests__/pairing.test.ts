@@ -136,4 +136,63 @@ describe('generatePairings', () => {
       expect(match.isBothLoss).toBe(false);
     }
   });
+
+  it('pairs within the same match-point group (no cross-group)', () => {
+    // 8 players, R1: A>B, C>D, E>F, G>H → winners=3MP, losers=0MP
+    const players = 'ABCDEFGH'.split('').map(mkPlayer);
+    const prevRounds = [
+      mkRound(1, [
+        mkMatch('A', 'B', 2, 0),
+        mkMatch('C', 'D', 2, 0),
+        mkMatch('E', 'F', 2, 0),
+        mkMatch('G', 'H', 2, 0),
+      ]),
+    ];
+
+    const winners = new Set(['A', 'C', 'E', 'G']);
+
+    // Run multiple times since pairing has random shuffling
+    for (let trial = 0; trial < 30; trial++) {
+      const round = generatePairings(players, prevRounds, 3, players);
+
+      expect(round.matches.length).toBe(4);
+      for (const m of round.matches) {
+        if (m.isBye) continue;
+        const p1IsWinner = winners.has(m.player1Id);
+        const p2IsWinner = winners.has(m.player2Id!);
+        // Both players in each match must be from the same MP group
+        expect(p1IsWinner).toBe(p2IsWinner);
+      }
+    }
+  });
+
+  it('floats a player down when within-group pairing is impossible', () => {
+    // 6 players, R1: A>B, C>D, E>F → 3 winners (odd), 3 losers (odd)
+    // One player must float between groups
+    const players = 'ABCDEF'.split('').map(mkPlayer);
+    const prevRounds = [
+      mkRound(1, [
+        mkMatch('A', 'B', 2, 0),
+        mkMatch('C', 'D', 2, 0),
+        mkMatch('E', 'F', 2, 0),
+      ]),
+    ];
+
+    for (let trial = 0; trial < 20; trial++) {
+      const round = generatePairings(players, prevRounds, 3, players);
+
+      expect(round.matches.length).toBe(3);
+      expect(round.matches.every((m) => !m.isBye)).toBe(true);
+
+      // Exactly one match should be cross-group (the float)
+      const winners = new Set(['A', 'C', 'E']);
+      let crossGroupCount = 0;
+      for (const m of round.matches) {
+        const p1W = winners.has(m.player1Id);
+        const p2W = winners.has(m.player2Id!);
+        if (p1W !== p2W) crossGroupCount++;
+      }
+      expect(crossGroupCount).toBe(1);
+    }
+  });
 });

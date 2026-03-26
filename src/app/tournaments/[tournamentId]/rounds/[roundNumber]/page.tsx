@@ -188,6 +188,13 @@ export default function RoundPage() {
     return totalB - totalA;
   });
 
+  // Assign table numbers based on sorted display order (non-BYE only)
+  const tableNumberMap = new Map<string, number>();
+  let tblNum = 0;
+  for (const m of sortedMatches) {
+    if (!m.isBye) tableNumberMap.set(m.id, ++tblNum);
+  }
+
   const canDrop = isLatestRound && !round.isCompleted;
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -243,7 +250,7 @@ export default function RoundPage() {
                   players={tournament.players}
                   bestOf={tournament.bestOf}
                   onChangeResult={handleChangeResult}
-                  tableNumber={match.isBye ? 0 : round.matches.filter((m) => !m.isBye).indexOf(match) + 1}
+                  tableNumber={match.isBye ? 0 : (tableNumberMap.get(match.id) ?? 0)}
                   pendingResult={pendingResults[match.id]}
                   canDrop={canDrop}
                   onDropPlayer={(playerId, playerName) => setDropTarget({ id: playerId, name: playerName })}

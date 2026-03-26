@@ -8,8 +8,19 @@ function generateMatchId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 }
 
+/** Fisher-Yates shuffle (in-place). */
+function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 /**
  * Generate pairings for the next round using Swiss system.
+ * Pairs within the same match-point group first, floating a player
+ * down to the next group only when within-group pairing is impossible.
  */
 export function generatePairings(
   players: Player[],
@@ -53,20 +64,17 @@ export function generatePairings(
     return mpB - mpA;
   });
 
-  // Shuffle within same match-point groups (Fisher-Yates)
-  let groupStart = 0;
-  while (groupStart < remainingPlayers.length) {
-    const groupMp = standingMap.get(remainingPlayers[groupStart].id)?.matchPoints ?? 0;
-    let groupEnd = groupStart + 1;
-    while (groupEnd < remainingPlayers.length && (standingMap.get(remainingPlayers[groupEnd].id)?.matchPoints ?? 0) === groupMp) {
-      groupEnd++;
+  // Split into MP groups and shuffle each
+  const groups: Player[][] = [];
+  let i = 0;
+  while (i < remainingPlayers.length) {
+    const mp = standingMap.get(remainingPlayers[i].id)?.matchPoints ?? 0;
+    let j = i + 1;
+    while (j < remainingPlayers.length && (standingMap.get(remainingPlayers[j].id)?.matchPoints ?? 0) === mp) {
+      j++;
     }
-    // Fisher-Yates shuffle for the group [groupStart, groupEnd)
-    for (let i = groupEnd - 1; i > groupStart; i--) {
-      const j = groupStart + Math.floor(Math.random() * (i - groupStart + 1));
-      [remainingPlayers[i], remainingPlayers[j]] = [remainingPlayers[j], remainingPlayers[i]];
-    }
-    groupStart = groupEnd;
+    groups.push(shuffle(remainingPlayers.slice(i, j)));
+    i = j;
   }
 
   // Build opponent history
@@ -75,23 +83,71 @@ export function generatePairings(
     opponentHistory.set(p.id, getPlayerOpponents(p.id, rounds));
   }
 
-  // Try pairing with opponent avoidance
-  let paired = tryPairing(remainingPlayers, opponentHistory, true);
-
-  // If strict avoidance fails, relax the constraint
-  if (!paired) {
-    paired = tryPairing(remainingPlayers, opponentHistory, false);
-  }
-
-  if (paired) {
-    matches.push(...paired);
-  }
+  // Pair group-by-group, floating unpaired players to the next group
+  matches.push(...pairByGroups(groups, opponentHistory));
 
   return {
     roundNumber,
     matches,
     isCompleted: false,
   };
+}
+
+/**
+ * Pair each MP group independently, carrying unpaired "floaters" down
+ * to the next group. This ensures within-group pairing is always
+ * preferred over cross-group pairing.
+ */
+function pairByGroups(
+  groups: Player[][],
+  opponentHistory: Map<string, Set<string>>
+): Match[] {
+  const allMatches: Match[] = [];
+  let floaters: Player[] = [];
+
+  for (const group of groups) {
+    const pool = [...floaters, ...group];
+    floaters = [];
+
+    if (pool.length === 0) continue;
+
+    if (pool.length % 2 === 0) {
+      let paired = tryPairing(pool, opponentHistory, true);
+      if (!paired) paired = tryPairing(pool, opponentHistory, false);
+      if (paired) {
+        allMatches.push(...paired);
+        continue;
+      }
+    }
+
+    // Odd count, or even-count pairing failed — try each player as floater
+    // Prefer floating the last player (lowest ranked / floater from above)
+    let success = false;
+    for (let fi = pool.length - 1; fi >= 0; fi--) {
+      const remaining = [...pool.slice(0, fi), ...pool.slice(fi + 1)];
+      let paired = tryPairing(remaining, opponentHistory, true);
+      if (!paired) paired = tryPairing(remaining, opponentHistory, false);
+      if (paired) {
+        allMatches.push(...paired);
+        floaters = [pool[fi]];
+        success = true;
+        break;
+      }
+    }
+    if (!success) {
+      // Last resort: float the last player
+      floaters = [pool[pool.length - 1]];
+    }
+  }
+
+  // Pair any remaining floaters (shouldn't happen with even total)
+  if (floaters.length >= 2) {
+    let paired = tryPairing(floaters, opponentHistory, true);
+    if (!paired) paired = tryPairing(floaters, opponentHistory, false);
+    if (paired) allMatches.push(...paired);
+  }
+
+  return allMatches;
 }
 
 function tryPairing(
