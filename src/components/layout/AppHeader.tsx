@@ -5,7 +5,10 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
 import { useRouter } from 'next/navigation';
+import { useThemeMode } from '@/hooks/useThemeMode';
 
 interface AppHeaderProps {
   title: string;
@@ -14,15 +17,16 @@ interface AppHeaderProps {
 
 export default function AppHeader({ title, backHref }: AppHeaderProps) {
   const router = useRouter();
+  const { resolved, toggle } = useThemeMode();
 
   return (
     <AppBar
       position="static"
       elevation={0}
       sx={{
-        background: 'rgba(18, 18, 18, 0.85)',
-        backdropFilter: 'blur(8px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        bgcolor: 'background.paper',
+        borderBottom: 1,
+        borderColor: 'divider',
       }}
     >
       <Toolbar>
@@ -31,9 +35,12 @@ export default function AppHeader({ title, backHref }: AppHeaderProps) {
             <ArrowBackIcon />
           </IconButton>
         )}
-        <Typography variant="h6" component="h1" sx={{ flexGrow: 1, fontWeight: 700, color: '#00bcd4' }}>
+        <Typography variant="h6" component="h1" sx={{ flexGrow: 1, fontWeight: 700, color: 'primary.main' }}>
           {title}
         </Typography>
+        <IconButton color="inherit" onClick={toggle} size="small">
+          {resolved === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+        </IconButton>
       </Toolbar>
     </AppBar>
   );
