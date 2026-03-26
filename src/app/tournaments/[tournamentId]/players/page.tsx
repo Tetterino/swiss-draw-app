@@ -74,7 +74,7 @@ export default function PlayersPage() {
 
           <PlayerList players={activePlayers} onRemove={handleRemovePlayer} />
 
-          {!canStart && activePlayers.length > 0 && (
+          {!canStart && (
             <Alert severity="info">大会を開始するには2人以上のプレイヤーが必要です。</Alert>
           )}
 
