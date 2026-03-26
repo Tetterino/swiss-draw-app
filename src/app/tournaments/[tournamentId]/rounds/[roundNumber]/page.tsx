@@ -103,9 +103,32 @@ export default function RoundPage() {
     confirmPendingResults();
     dispatch({ type: 'COMPLETE_ROUND', payload: { tournamentId, roundNumber } });
 
+    // Build rounds with pending results merged — React hasn't processed
+    // the dispatches above yet, so tournament.rounds still has stale data.
+    const roundsWithResults = tournament.rounds.map((r) => {
+      if (r.roundNumber !== roundNumber) return r;
+      return {
+        ...r,
+        isCompleted: true,
+        matches: r.matches.map((m) => {
+          if (m.isCompleted) return m;
+          const pending = pendingResults[m.id];
+          if (!pending) return m;
+          return {
+            ...m,
+            games: pending.games,
+            winnerId: pending.winnerId,
+            isDraw: pending.isDraw,
+            isBothLoss: pending.isBothLoss,
+            isCompleted: true,
+          };
+        }),
+      };
+    });
+
     const nextRound = generatePairings(
       tournament.players,
-      tournament.rounds.map((r) => (r.roundNumber === roundNumber ? { ...r, isCompleted: true } : r)),
+      roundsWithResults,
       tournament.bestOf,
       tournament.players
     );
