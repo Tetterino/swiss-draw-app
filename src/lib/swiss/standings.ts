@@ -115,18 +115,46 @@ export function calculateStandings(tournament: Tournament): PlayerStanding[] {
     return opponentMWPs.reduce((sum, v) => sum + v, 0) / opponentMWPs.length;
   }
 
-  // Calculate OGW% for each player
-  function calcOGWPercent(playerId: string): number {
+  // Calculate OOMW% (average of each opponent's OMW%) for each player
+  function calcOOMWPercent(playerId: string): number {
     const record = records.get(playerId)!;
     if (record.opponents.length === 0) return 0;
 
-    const opponentGWPs = record.opponents.map((oppId) => {
-      const oppRecord = records.get(oppId);
-      if (!oppRecord) return 0;
-      return getGameWinPercent(oppRecord);
-    });
+    const opponentOMWs = record.opponents.map((oppId) => calcOMWPercent(oppId));
+    return opponentOMWs.reduce((sum, v) => sum + v, 0) / opponentOMWs.length;
+  }
 
-    return opponentGWPs.reduce((sum, v) => sum + v, 0) / opponentGWPs.length;
+  /** Opponent Total Point（対手累点）: 各対戦相手の現在のマッチポイントを合計 */
+  function calcOpponentTotalPoint(playerId: string): number {
+    const record = records.get(playerId)!;
+    let sum = 0;
+    for (const oppId of record.opponents) {
+      const oppRecord = records.get(oppId);
+      if (oppRecord) sum += getMatchPoints(oppRecord);
+    }
+    return sum;
+  }
+
+  /** Win Total Point（勝手累点）: 対戦して勝利した相手の、現在のマッチポイントを合計（BYE・引き分け・両敗は含めない） */
+  function calcWinTotalPoint(playerId: string): number {
+    let sum = 0;
+    for (const round of completedRounds) {
+      for (const match of round.matches) {
+        if (!match.isCompleted) continue;
+
+        const isPlayer1 = match.player1Id === playerId;
+        const isPlayer2 = match.player2Id === playerId;
+        if (!isPlayer1 && !isPlayer2) continue;
+        if (match.isBye) continue;
+        if (match.isBothLoss || match.isDraw) continue;
+        if (match.winnerId !== playerId) continue;
+
+        const opponentId = isPlayer1 ? match.player2Id! : match.player1Id;
+        const oppRecord = records.get(opponentId);
+        if (oppRecord) sum += getMatchPoints(oppRecord);
+      }
+    }
+    return sum;
   }
 
   // Build standings
@@ -145,17 +173,23 @@ export function calculateStandings(tournament: Tournament): PlayerStanding[] {
       gameDraws: record.gameDraws,
       omwPercent: calcOMWPercent(player.id),
       gwPercent: getGameWinPercent(record),
-      ogwPercent: calcOGWPercent(player.id),
+      oomwPercent: calcOOMWPercent(player.id),
+      winTotalPoint: calcWinTotalPoint(player.id),
+      opponentTotalPoint: calcOpponentTotalPoint(player.id),
       isDropped: player.status === 'dropped',
     };
   });
 
-  // Sort: MP desc → OMW% desc → GW% desc → OGW% desc
+  // Sort: MP desc → OMW% desc → GW% desc → OOMW% desc → Opponent Total Point desc → Win Total Point desc
   standings.sort((a, b) => {
     if (b.matchPoints !== a.matchPoints) return b.matchPoints - a.matchPoints;
     if (b.omwPercent !== a.omwPercent) return b.omwPercent - a.omwPercent;
     if (b.gwPercent !== a.gwPercent) return b.gwPercent - a.gwPercent;
-    return b.ogwPercent - a.ogwPercent;
+    if (b.oomwPercent !== a.oomwPercent) return b.oomwPercent - a.oomwPercent;
+    if (b.opponentTotalPoint !== a.opponentTotalPoint) {
+      return b.opponentTotalPoint - a.opponentTotalPoint;
+    }
+    return b.winTotalPoint - a.winTotalPoint;
   });
 
   // Assign ranks (tied players share the same rank)
@@ -168,7 +202,9 @@ export function calculateStandings(tournament: Tournament): PlayerStanding[] {
         s.matchPoints === prev.matchPoints &&
         s.omwPercent === prev.omwPercent &&
         s.gwPercent === prev.gwPercent &&
-        s.ogwPercent === prev.ogwPercent;
+        s.oomwPercent === prev.oomwPercent &&
+        s.opponentTotalPoint === prev.opponentTotalPoint &&
+        s.winTotalPoint === prev.winTotalPoint;
       s.rank = isTied ? prev.rank : i + 1;
     }
   });

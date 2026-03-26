@@ -55,6 +55,10 @@ export interface PlayerStanding {
   gameDraws: number;
   omwPercent: number; // Opponent Match Win %
   gwPercent: number;  // Game Win %
-  ogwPercent: number; // Opponent Game Win %
+  oomwPercent: number; // Opponent Opponent Match Win %
+  /** 勝手累点 (Win Total Point): 対戦して勝利した相手のマッチポイントの合計 */
+  winTotalPoint: number;
+  /** 対手累点 (Opponent Total Point): 対戦相手のマッチポイントの合計（同一相手は対戦回数分加算） */
+  opponentTotalPoint: number;
   isDropped: boolean;
 }

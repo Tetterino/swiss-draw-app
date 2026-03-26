@@ -36,7 +36,9 @@ function mkStanding(playerId: string, matchPoints: number): PlayerStanding {
     gameDraws: 0,
     omwPercent: 0,
     gwPercent: 0,
-    ogwPercent: 0,
+    oomwPercent: 0,
+    winTotalPoint: 0,
+    opponentTotalPoint: 0,
     isDropped: false,
   };
 }
