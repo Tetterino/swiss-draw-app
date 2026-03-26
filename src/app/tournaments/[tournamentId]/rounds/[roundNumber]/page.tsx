@@ -140,10 +140,13 @@ export default function RoundPage() {
     setDropTarget(null);
   };
 
-  // Sort matches: non-bye first, bye at bottom
+  // Sort matches: by combined match points (descending), BYE at bottom
+  const standingMap = new Map(standings.map((s) => [s.playerId, s.matchPoints]));
   const sortedMatches = [...round.matches].sort((a, b) => {
-    if (a.isBye === b.isBye) return 0;
-    return a.isBye ? 1 : -1;
+    if (a.isBye !== b.isBye) return a.isBye ? 1 : -1;
+    const totalA = (standingMap.get(a.player1Id) ?? 0) + (standingMap.get(a.player2Id ?? '') ?? 0);
+    const totalB = (standingMap.get(b.player1Id) ?? 0) + (standingMap.get(b.player2Id ?? '') ?? 0);
+    return totalB - totalA;
   });
 
   const canDrop = isLatestRound && !round.isCompleted;
