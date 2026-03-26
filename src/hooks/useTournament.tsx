@@ -198,6 +198,11 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
     }
 
     case 'UNDO_LAST_ROUND': {
+      const reopenRound = (r: Round): Round => ({
+        ...r,
+        isCompleted: false,
+        matches: r.matches.map((m) => m.isBye ? m : { ...m, isCompleted: false }),
+      });
       return {
         ...state,
         tournaments: state.tournaments.map((t) => {
@@ -208,13 +213,13 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
               ...t,
               phase: 'rounds' as TournamentPhase,
               rounds: t.rounds.map((r, i) =>
-                i === t.rounds.length - 1 ? { ...r, isCompleted: false } : r
+                i === t.rounds.length - 1 ? reopenRound(r) : r
               ),
             };
           }
           // Remove the latest round and re-open the previous one
           const newRounds = t.rounds.slice(0, -1).map((r, i, arr) =>
-            i === arr.length - 1 ? { ...r, isCompleted: false } : r
+            i === arr.length - 1 ? reopenRound(r) : r
           );
           return { ...t, rounds: newRounds };
         }),
