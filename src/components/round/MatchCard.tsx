@@ -7,7 +7,6 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import ButtonBase from '@mui/material/ButtonBase';
-import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import ReplayIcon from '@mui/icons-material/Replay';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
@@ -266,9 +265,14 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             {hasInput && !match.isCompleted && (
-              <IconButton size="small" onClick={handleReset} sx={{ p: 0.25 }}>
-                <ReplayIcon fontSize="small" />
-              </IconButton>
+              <Chip
+                label="リセット"
+                size="small"
+                variant="outlined"
+                icon={<ReplayIcon />}
+                onClick={handleReset}
+                sx={{ height: 24, '& .MuiChip-label': { px: 0.5, fontSize: '0.7rem' }, '& .MuiChip-icon': { fontSize: 14 } }}
+              />
             )}
             {statusChip}
           </Box>
