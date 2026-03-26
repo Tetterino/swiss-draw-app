@@ -30,16 +30,8 @@ function loadPreference(): ThemePreference {
 }
 
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreference] = useState<ThemePreference>('system');
-  const [systemMode, setSystemMode] = useState<PaletteMode>('dark');
-  const [mounted, setMounted] = useState(false);
-
-  // Load saved preference on mount
-  useEffect(() => {
-    setPreference(loadPreference());
-    setSystemMode(getSystemMode());
-    setMounted(true);
-  }, []);
+  const [preference, setPreference] = useState<ThemePreference>(loadPreference);
+  const [systemMode, setSystemMode] = useState<PaletteMode>(getSystemMode);
 
   // Listen for system theme changes
   useEffect(() => {
@@ -57,10 +49,7 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, next);
   };
 
-  const theme = useMemo(() => buildTheme(resolved), [resolved]);
-
-  // Avoid hydration mismatch: render dark by default until mounted
-  const activeTheme = useMemo(() => (mounted ? theme : buildTheme('dark')), [mounted, theme]);
+  const activeTheme = useMemo(() => buildTheme(resolved), [resolved]);
 
   return (
     <ThemeModeContext.Provider value={{ preference, resolved, toggle }}>
