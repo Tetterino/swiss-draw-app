@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -8,6 +8,9 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import ButtonBase from '@mui/material/ButtonBase';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 import ReplayIcon from '@mui/icons-material/Replay';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import { Match, Player, GameResult } from '@/types';
@@ -30,39 +33,6 @@ interface MatchCardProps {
   onDropPlayer?: (playerId: string, playerName: string) => void;
 }
 
-function useLongPress(onTap: () => void, onLongPress: () => void, delay = 500) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressedRef = useRef(false);
-
-  const start = useCallback(() => {
-    longPressedRef.current = false;
-    timerRef.current = setTimeout(() => {
-      longPressedRef.current = true;
-      onLongPress();
-    }, delay);
-  }, [onLongPress, delay]);
-
-  const cancel = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  const handleClick = useCallback(() => {
-    if (!longPressedRef.current) onTap();
-  }, [onTap]);
-
-  return {
-    onMouseDown: start,
-    onMouseUp: cancel,
-    onMouseLeave: cancel,
-    onTouchStart: start,
-    onTouchEnd: cancel,
-    onClick: handleClick,
-  };
-}
-
 export default function MatchCard({ match, players, bestOf, onChangeResult, tableNumber, pendingResult, canDrop, onDropPlayer }: MatchCardProps) {
   const player1 = players.find((p) => p.id === match.player1Id);
   const player2 = match.player2Id ? players.find((p) => p.id === match.player2Id) : null;
@@ -77,27 +47,12 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
   const totalGames = p1Wins + p2Wins + draws;
   const canAdd = totalGames < bestOf;
 
-  const p1Press = useLongPress(
-    useCallback(() => { if (canAdd && p1Wins < winsNeeded) setP1Wins((v) => v + 1); }, [canAdd, p1Wins, winsNeeded]),
-    useCallback(() => { if (p1Wins > 0) setP1Wins((v) => v - 1); }, [p1Wins]),
-  );
-  const p2Press = useLongPress(
-    useCallback(() => { if (canAdd && p2Wins < winsNeeded) setP2Wins((v) => v + 1); }, [canAdd, p2Wins, winsNeeded]),
-    useCallback(() => { if (p2Wins > 0) setP2Wins((v) => v - 1); }, [p2Wins]),
-  );
-  const drawPress = useLongPress(
-    useCallback(() => { if (canAdd) setDraws((v) => v + 1); }, [canAdd]),
-    useCallback(() => { if (draws > 0) setDraws((v) => v - 1); }, [draws]),
-  );
-
-  // Disable tap zones when neither tap (increment) nor long-press (decrement) can do anything
-  const p1Inactive = !(canAdd && p1Wins < winsNeeded) && p1Wins === 0;
-  const p2Inactive = !(canAdd && p2Wins < winsNeeded) && p2Wins === 0;
-
   // Both-loss state
   const [isBothLoss, setIsBothLoss] = useState(
     pendingResult ? pendingResult.isBothLoss : (match.isBothLoss ?? false)
   );
+
+  const inputDisabled = match.isCompleted || isBothLoss;
 
   // Notify parent on score change
   useEffect(() => {
@@ -137,21 +92,15 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
 
   if (!player1) return null;
 
-  const tapZoneSx = {
+  const zoneSx = {
     borderRadius: 1,
-    py: 1.5,
-    px: 1,
+    py: 1,
+    px: 0.5,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    userSelect: 'none',
-    WebkitTouchCallout: 'none',
     backgroundColor: 'action.hover',
-    transition: 'background-color 0.1s',
-    '&:active': {
-      backgroundColor: 'action.selected',
-    },
   } as const;
 
   const dropButtonSx = {
@@ -209,19 +158,19 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
 
           {/* Three-zone layout matching normal cards — score area dimmed */}
           <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 0.5, opacity: 0.5 }}>
-            <Box sx={{ ...tapZoneSx, flex: 1 }}>
+            <Box sx={{ ...zoneSx, flex: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: 700, textAlign: 'center' }} noWrap>
                 {player1.name}
               </Typography>
             </Box>
 
-            <Box sx={{ ...tapZoneSx, minWidth: 72 }}>
+            <Box sx={{ ...zoneSx, minWidth: 72 }}>
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 {winsNeeded} - 0
               </Typography>
             </Box>
 
-            <Box sx={{ ...tapZoneSx, flex: 1 }}>
+            <Box sx={{ ...zoneSx, flex: 1 }}>
               <Typography variant="body2" color="text.disabled" sx={{ textAlign: 'center' }} noWrap>
                 &mdash;
               </Typography>
@@ -278,14 +227,9 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
           </Box>
         </Box>
 
-        {/* Three-zone tap area */}
+        {/* Display zones */}
         <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 0.5 }}>
-          {/* Player 1 zone */}
-          <ButtonBase
-            sx={{ ...tapZoneSx, flex: 1 }}
-            {...(match.isCompleted || displayBothLoss || p1Inactive ? {} : p1Press)}
-            disabled={match.isCompleted || displayBothLoss || p1Inactive}
-          >
+          <Box sx={{ ...zoneSx, flex: 1 }}>
             <Typography
               variant="body2"
               sx={{
@@ -298,14 +242,9 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
             >
               {player1.name}
             </Typography>
-          </ButtonBase>
+          </Box>
 
-          {/* Center score zone */}
-          <ButtonBase
-            sx={{ ...tapZoneSx, minWidth: 72 }}
-            {...(match.isCompleted || displayBothLoss || bestOf <= 1 ? {} : drawPress)}
-            disabled={match.isCompleted || displayBothLoss || bestOf <= 1}
-          >
+          <Box sx={{ ...zoneSx, minWidth: 72 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, ...(displayBothLoss ? { color: 'error.main' } : {}) }}>
               {p1Wins} - {p2Wins}
             </Typography>
@@ -318,14 +257,9 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
                 引分 {draws}
               </Typography>
             ) : null}
-          </ButtonBase>
+          </Box>
 
-          {/* Player 2 zone */}
-          <ButtonBase
-            sx={{ ...tapZoneSx, flex: 1 }}
-            {...(match.isCompleted || displayBothLoss || p2Inactive ? {} : p2Press)}
-            disabled={match.isCompleted || displayBothLoss || p2Inactive}
-          >
+          <Box sx={{ ...zoneSx, flex: 1 }}>
             <Typography
               variant="body2"
               sx={{
@@ -338,21 +272,58 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
             >
               {player2.name}
             </Typography>
-          </ButtonBase>
+          </Box>
         </Box>
 
-        {/* Both-loss button */}
-        {!match.isCompleted && !displayBothLoss && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
-            <Button
-              size="small"
-              variant="outlined"
-              color="error"
-              onClick={handleBothLoss}
-              sx={{ fontSize: '0.75rem', py: 0.25, px: 1.5 }}
-            >
-              両負け
-            </Button>
+        {/* Controls row: +/- buttons and both-loss */}
+        {!match.isCompleted && (
+          <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.75, gap: 0.5 }}>
+            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 0.25 }}>
+              <IconButton size="small" onClick={() => setP1Wins((v) => v - 1)} disabled={inputDisabled || p1Wins === 0}>
+                <RemoveIcon fontSize="small" />
+              </IconButton>
+              <IconButton size="small" onClick={() => setP1Wins((v) => v + 1)} disabled={inputDisabled || !canAdd || p1Wins >= winsNeeded}>
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              {displayBothLoss ? (
+                <Box sx={{ minWidth: 72 }} />
+              ) : (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  onClick={handleBothLoss}
+                  sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0, whiteSpace: 'nowrap' }}
+                >
+                  両負け
+                </Button>
+              )}
+            </Box>
+
+            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 0.25 }}>
+              <IconButton size="small" onClick={() => setP2Wins((v) => v - 1)} disabled={inputDisabled || p2Wins === 0}>
+                <RemoveIcon fontSize="small" />
+              </IconButton>
+              <IconButton size="small" onClick={() => setP2Wins((v) => v + 1)} disabled={inputDisabled || !canAdd || p2Wins >= winsNeeded}>
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+        )}
+
+        {/* Draw controls for BO3+ */}
+        {!match.isCompleted && bestOf > 1 && !displayBothLoss && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 0.5, gap: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">引分</Typography>
+            <IconButton size="small" onClick={() => setDraws((v) => v - 1)} disabled={inputDisabled || draws === 0}>
+              <RemoveIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+            <IconButton size="small" onClick={() => setDraws((v) => v + 1)} disabled={inputDisabled || !canAdd}>
+              <AddIcon sx={{ fontSize: 16 }} />
+            </IconButton>
           </Box>
         )}
 
