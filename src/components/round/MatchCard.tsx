@@ -91,6 +91,10 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
     useCallback(() => { if (draws > 0) setDraws((v) => v - 1); }, [draws]),
   );
 
+  // Disable tap zones when neither tap (increment) nor long-press (decrement) can do anything
+  const p1Inactive = !(canAdd && p1Wins < winsNeeded) && p1Wins === 0;
+  const p2Inactive = !(canAdd && p2Wins < winsNeeded) && p2Wins === 0;
+
   // Both-loss state
   const [isBothLoss, setIsBothLoss] = useState(
     pendingResult ? pendingResult.isBothLoss : (match.isBothLoss ?? false)
@@ -275,8 +279,8 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
           {/* Player 1 zone */}
           <ButtonBase
             sx={{ ...tapZoneSx, flex: 1 }}
-            {...(match.isCompleted || displayBothLoss ? {} : p1Press)}
-            disabled={match.isCompleted || displayBothLoss}
+            {...(match.isCompleted || displayBothLoss || p1Inactive ? {} : p1Press)}
+            disabled={match.isCompleted || displayBothLoss || p1Inactive}
           >
             <Typography
               variant="body2"
@@ -315,8 +319,8 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
           {/* Player 2 zone */}
           <ButtonBase
             sx={{ ...tapZoneSx, flex: 1 }}
-            {...(match.isCompleted || displayBothLoss ? {} : p2Press)}
-            disabled={match.isCompleted || displayBothLoss}
+            {...(match.isCompleted || displayBothLoss || p2Inactive ? {} : p2Press)}
+            disabled={match.isCompleted || displayBothLoss || p2Inactive}
           >
             <Typography
               variant="body2"
