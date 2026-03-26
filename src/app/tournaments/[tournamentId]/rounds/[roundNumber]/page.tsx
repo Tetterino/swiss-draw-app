@@ -37,6 +37,7 @@ export default function RoundPage() {
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
   const [dropTarget, setDropTarget] = useState<{ id: string; name: string } | null>(null);
+  const [undropTarget, setUndropTarget] = useState<{ id: string; name: string } | null>(null);
   const [showStandings, setShowStandings] = useState(false);
   const [pendingResults, setPendingResults] = useState<Record<string, PendingResult>>({});
 
@@ -140,6 +141,15 @@ export default function RoundPage() {
     setDropTarget(null);
   };
 
+  const handleUndropPlayer = () => {
+    if (!undropTarget) return;
+    dispatch({
+      type: 'UNDROP_PLAYER',
+      payload: { tournamentId, playerId: undropTarget.id },
+    });
+    setUndropTarget(null);
+  };
+
   // Sort matches: by combined match points (descending), BYE at bottom
   const standingMap = new Map(standings.map((s) => [s.playerId, s.matchPoints]));
   const sortedMatches = [...round.matches].sort((a, b) => {
@@ -208,12 +218,13 @@ export default function RoundPage() {
                   pendingResult={pendingResults[match.id]}
                   canDrop={canDrop}
                   onDropPlayer={(playerId, playerName) => setDropTarget({ id: playerId, name: playerName })}
+                  onUndropPlayer={(playerId, playerName) => setUndropTarget({ id: playerId, name: playerName })}
                 />
               ))}
             </Stack>
 
             {(allMatchesCompleted || (allMatchesReady && hasPendingResults)) && !round.isCompleted && (
-              <Box sx={{ mt: 3 }}>
+              <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                 {isLastRound ? (
                   <Button
                     variant="contained"
@@ -227,16 +238,29 @@ export default function RoundPage() {
                     大会を終了して結果を確認
                   </Button>
                 ) : (
-                  <Button
-                    variant="contained"
-                    size="large"
-                    fullWidth
-                    endIcon={<NavigateNextIcon />}
-                    onClick={() => setConfirmNext(true)}
-                    sx={{ py: 1.5 }}
-                  >
-                    次のラウンドへ (ラウンド {roundNumber + 1})
-                  </Button>
+                  <>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      fullWidth
+                      endIcon={<NavigateNextIcon />}
+                      onClick={() => setConfirmNext(true)}
+                      sx={{ py: 1.5 }}
+                    >
+                      次のラウンドへ (ラウンド {roundNumber + 1})
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="success"
+                      size="large"
+                      fullWidth
+                      startIcon={<EmojiEventsIcon />}
+                      onClick={() => setConfirmFinish(true)}
+                      sx={{ py: 1.5 }}
+                    >
+                      このラウンドで大会を終了
+                    </Button>
+                  </>
                 )}
               </Box>
             )}
@@ -281,10 +305,19 @@ export default function RoundPage() {
         <ConfirmDialog
           open={!!dropTarget}
           title="プレイヤーをドロップ"
-          message={`${dropTarget?.name ?? ''} を大会からドロップ（途中辞退）しますか？この操作は取り消せません。`}
+          message={`${dropTarget?.name ?? ''} を大会からドロップ（途中辞退）しますか？`}
           confirmLabel="ドロップ"
           onConfirm={handleDropPlayer}
           onCancel={() => setDropTarget(null)}
+        />
+
+        <ConfirmDialog
+          open={!!undropTarget}
+          title="プレイヤーを復帰"
+          message={`${undropTarget?.name ?? ''} を大会に復帰させますか？次のラウンドからマッチングに含まれます。`}
+          confirmLabel="復帰"
+          onConfirm={handleUndropPlayer}
+          onCancel={() => setUndropTarget(null)}
         />
 
         <ConfirmDialog

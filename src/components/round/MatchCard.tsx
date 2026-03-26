@@ -10,6 +10,7 @@ import ButtonBase from '@mui/material/ButtonBase';
 import IconButton from '@mui/material/IconButton';
 import ReplayIcon from '@mui/icons-material/Replay';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { Match, Player, GameResult } from '@/types';
 
 interface PendingResult {
@@ -27,6 +28,7 @@ interface MatchCardProps {
   pendingResult?: PendingResult;
   canDrop?: boolean;
   onDropPlayer?: (playerId: string, playerName: string) => void;
+  onUndropPlayer?: (playerId: string, playerName: string) => void;
 }
 
 function useLongPress(onTap: () => void, onLongPress: () => void, delay = 500) {
@@ -62,7 +64,7 @@ function useLongPress(onTap: () => void, onLongPress: () => void, delay = 500) {
   };
 }
 
-export default function MatchCard({ match, players, bestOf, onChangeResult, tableNumber, pendingResult, canDrop, onDropPlayer }: MatchCardProps) {
+export default function MatchCard({ match, players, bestOf, onChangeResult, tableNumber, pendingResult, canDrop, onDropPlayer, onUndropPlayer }: MatchCardProps) {
   const player1 = players.find((p) => p.id === match.player1Id);
   const player2 = match.player2Id ? players.find((p) => p.id === match.player2Id) : null;
 
@@ -147,25 +149,47 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
     '&:hover': { color: 'error.main' },
   } as const;
 
-  // Drop row — 3-column layout aligned with tap zones above
-  const dropRow = canDrop && onDropPlayer && (
+  const undropButtonSx = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 0.5,
+    py: 0.5,
+    borderRadius: 1,
+    color: 'text.secondary',
+    '&:hover': { color: 'success.main' },
+  } as const;
+
+  // Drop/Undrop row — 3-column layout aligned with tap zones above
+  const renderPlayerAction = (player: Player | null) => {
+    if (!player) return null;
+    if (player.status === 'active' && canDrop && onDropPlayer) {
+      return (
+        <ButtonBase onClick={() => onDropPlayer(player.id, player.name)} sx={dropButtonSx}>
+          <PersonOffIcon sx={{ fontSize: 14 }} />
+          <Typography variant="caption">Drop</Typography>
+        </ButtonBase>
+      );
+    }
+    if (player.status === 'dropped' && canDrop && onUndropPlayer) {
+      return (
+        <ButtonBase onClick={() => onUndropPlayer(player.id, player.name)} sx={undropButtonSx}>
+          <PersonAddIcon sx={{ fontSize: 14 }} />
+          <Typography variant="caption">復帰</Typography>
+        </ButtonBase>
+      );
+    }
+    return null;
+  };
+
+  const dropRow = canDrop && (onDropPlayer || onUndropPlayer) && (
     <Box sx={{ display: 'flex', mt: 0.75, gap: 0.5 }}>
       <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        {player1.status === 'active' && (
-          <ButtonBase onClick={() => onDropPlayer(player1.id, player1.name)} sx={dropButtonSx}>
-            <PersonOffIcon sx={{ fontSize: 14 }} />
-            <Typography variant="caption">Drop</Typography>
-          </ButtonBase>
-        )}
+        {renderPlayerAction(player1 ?? null)}
       </Box>
       <Box sx={{ minWidth: 72 }} />
       <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        {player2 && player2.status === 'active' && (
-          <ButtonBase onClick={() => onDropPlayer(player2.id, player2.name)} sx={dropButtonSx}>
-            <PersonOffIcon sx={{ fontSize: 14 }} />
-            <Typography variant="caption">Drop</Typography>
-          </ButtonBase>
-        )}
+        {renderPlayerAction(player2 ?? null)}
       </Box>
     </Box>
   );

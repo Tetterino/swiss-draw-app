@@ -13,11 +13,12 @@ export type TournamentAction =
   | { type: 'ADD_PLAYERS_BULK'; payload: { tournamentId: string; names: string[] } }
   | { type: 'REMOVE_PLAYER'; payload: { tournamentId: string; playerId: string } }
   | { type: 'DROP_PLAYER'; payload: { tournamentId: string; playerId: string } }
-  | { type: 'START_TOURNAMENT'; payload: { tournamentId: string; rounds: Round[] } }
+  | { type: 'START_TOURNAMENT'; payload: { tournamentId: string; rounds: Round[]; totalRounds?: number } }
   | { type: 'UPDATE_MATCH_RESULT'; payload: { tournamentId: string; roundNumber: number; matchId: string; games: GameResult; winnerId: string | null; isDraw: boolean } }
   | { type: 'COMPLETE_ROUND'; payload: { tournamentId: string; roundNumber: number } }
   | { type: 'ADD_ROUND'; payload: { tournamentId: string; round: Round } }
   | { type: 'FINISH_TOURNAMENT'; payload: string }
+  | { type: 'UNDROP_PLAYER'; payload: { tournamentId: string; playerId: string } }
   | { type: 'UNDO_LAST_ROUND'; payload: { tournamentId: string } };
 
 interface TournamentState {
@@ -116,6 +117,21 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
       };
     }
 
+    case 'UNDROP_PLAYER': {
+      return {
+        ...state,
+        tournaments: state.tournaments.map((t) => {
+          if (t.id !== action.payload.tournamentId) return t;
+          return {
+            ...t,
+            players: t.players.map((p) =>
+              p.id === action.payload.playerId ? { ...p, status: 'active' as const } : p
+            ),
+          };
+        }),
+      };
+    }
+
     case 'START_TOURNAMENT': {
       return {
         ...state,
@@ -125,7 +141,7 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
           return {
             ...t,
             phase: 'rounds' as TournamentPhase,
-            totalRounds: calculateTotalRounds(activePlayers),
+            totalRounds: action.payload.totalRounds ?? calculateTotalRounds(activePlayers),
             rounds: action.payload.rounds,
           };
         }),
