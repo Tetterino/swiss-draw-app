@@ -84,7 +84,7 @@ export default function PlayerList({ players, onRemove, showRemove = true, onRen
         </List>
       </Paper>
 
-      {onRename && (
+      {onRename && renamingPlayer && (
         <PlayerRenameDialog
           player={renamingPlayer}
           players={players}

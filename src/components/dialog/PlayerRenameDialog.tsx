@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -11,44 +11,37 @@ import ConfirmDialog from '@/components/layout/ConfirmDialog';
 import { Player } from '@/types';
 
 export interface PlayerRenameDialogProps {
-  /** 編集対象。null のときは閉じた状態 */
-  player: Player | null;
+  /** 編集対象 */
+  player: Player;
   /** 重複判定用（編集中のプレイヤー以外と比較） */
   players: Player[];
   onClose: () => void;
   onSave: (playerId: string, name: string) => void;
 }
 
+/*
+ * プレイヤー名を編集するダイアログ
+ * @param player 編集対象のプレイヤー
+ * @param players 重複判定用のプレイヤー一覧
+ * @param onClose 閉じる時のコールバック
+ * @param onSave 保存時のコールバック
+ */
 export default function PlayerRenameDialog({ player, players, onClose, onSave }: PlayerRenameDialogProps) {
-  const [editName, setEditName] = useState('');
+  const [editName, setEditName] = useState(player.name);
   const [duplicateConfirmOpen, setDuplicateConfirmOpen] = useState(false);
-
-  useEffect(() => {
-    if (player) {
-      setEditName(player.name);
-      setDuplicateConfirmOpen(false);
-    } else {
-      setEditName('');
-      setDuplicateConfirmOpen(false);
-    }
-  }, [player]);
 
   const trimmedName = editName.trim();
   const isEmptyName = trimmedName.length === 0;
 
-  const hasOtherPlayerWithName = (name: string): boolean => {
-    if (!player) return false;
-    return players.some((p) => p.id !== player.id && p.name === name);
-  };
+  const hasOtherPlayerWithName = (name: string): boolean =>
+    players.some((p) => p.id !== player.id && p.name === name);
 
   const performSave = () => {
-    if (!player) return;
     onSave(player.id, trimmedName);
     onClose();
   };
 
   const handleSave = () => {
-    if (!player) return;
     if (isEmptyName) return;
     if (hasOtherPlayerWithName(trimmedName)) {
       setDuplicateConfirmOpen(true);
@@ -63,14 +56,14 @@ export default function PlayerRenameDialog({ player, players, onClose, onSave }:
 
   return (
     <>
-      <Dialog open={!!player} onClose={onClose} fullWidth maxWidth="xs">
+      <Dialog open onClose={onClose} fullWidth maxWidth="xs">
         <DialogTitle>プレイヤー名の編集</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
             label="プレイヤー名"
-            placeholder={player?.name ?? ''}
+            placeholder={player.name}
             fullWidth
             value={editName}
             error={isEmptyName}
