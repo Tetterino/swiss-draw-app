@@ -36,6 +36,7 @@ export default function RoundPage() {
   const { getTournament, dispatch } = useTournament();
   const [confirmNext, setConfirmNext] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [confirmEarlyFinish, setConfirmEarlyFinish] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
   const [dropTarget, setDropTarget] = useState<{ id: string; name: string } | null>(null);
   const [showStandings, setShowStandings] = useState(false);
@@ -114,11 +115,47 @@ export default function RoundPage() {
     router.push(`/tournaments/${tournamentId}/rounds/${roundNumber + 1}`);
   };
 
+  // Compute undefeated player count after applying current round results
+  const computeUndefeatedCount = (): number => {
+    const undefeated = new Set(
+      standings
+        .filter((s) => s.matchLosses === 0 && !s.isDropped)
+        .map((s) => s.playerId)
+    );
+    for (const match of round.matches) {
+      if (match.isBye) continue;
+      const pending = pendingResults[match.id];
+      const result = match.isCompleted ? match : pending;
+      if (!result) continue;
+      if (result.isBothLoss) {
+        undefeated.delete(match.player1Id);
+        if (match.player2Id) undefeated.delete(match.player2Id);
+      } else if (result.winnerId) {
+        const loserId = result.winnerId === match.player1Id ? match.player2Id : match.player1Id;
+        if (loserId) undefeated.delete(loserId);
+      }
+    }
+    return undefeated.size;
+  };
+
+  const handleNextRoundClick = () => {
+    const minRounds = Math.max(1, tournament.totalRounds - 1);
+    if (roundNumber >= minRounds) {
+      const count = computeUndefeatedCount();
+      if (count <= 1) {
+        setConfirmEarlyFinish(true);
+        return;
+      }
+    }
+    setConfirmNext(true);
+  };
+
   const handleFinishTournament = () => {
     confirmPendingResults();
     dispatch({ type: 'COMPLETE_ROUND', payload: { tournamentId, roundNumber } });
     dispatch({ type: 'FINISH_TOURNAMENT', payload: tournamentId });
     setConfirmFinish(false);
+    setConfirmEarlyFinish(false);
     router.push(`/tournaments/${tournamentId}/standings`);
   };
 
@@ -234,7 +271,7 @@ export default function RoundPage() {
                     size="large"
                     fullWidth
                     endIcon={<NavigateNextIcon />}
-                    onClick={() => setConfirmNext(true)}
+                    onClick={handleNextRoundClick}
                     sx={{ py: 1.5 }}
                   >
                     次のラウンドへ (ラウンド {roundNumber + 1})
@@ -278,6 +315,19 @@ export default function RoundPage() {
           confirmLabel="終了"
           onConfirm={handleFinishTournament}
           onCancel={() => setConfirmFinish(false)}
+        />
+
+        <ConfirmDialog
+          open={confirmEarlyFinish}
+          title="全勝者が確定"
+          message="全勝プレイヤーが1人以下になりました。これ以上ラウンドを続けると全勝者が0人になる可能性があります。大会を終了しますか？"
+          confirmLabel="大会を終了"
+          cancelLabel="次のラウンドへ"
+          onConfirm={handleFinishTournament}
+          onCancel={() => {
+            setConfirmEarlyFinish(false);
+            handleNextRound();
+          }}
         />
 
         <ConfirmDialog
