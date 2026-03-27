@@ -47,8 +47,8 @@ export default function StandingsTable({ standings, showTiebreakers = true }: St
                 <Tooltip title="Game Win % - 自分のゲーム勝率" arrow>
                   <TableCell align="center" sx={{ fontWeight: 700, cursor: 'help' }}>GW%</TableCell>
                 </Tooltip>
-                <Tooltip title="Opponent Opponent Match Win % - 対戦相手の対戦相手マッチ勝率の平均" arrow>
-                  <TableCell align="center" sx={{ fontWeight: 700, cursor: 'help' }}>OOMW%</TableCell>
+                <Tooltip title="Opponent Game Win % - 対戦相手のゲーム勝率の平均" arrow>
+                  <TableCell align="center" sx={{ fontWeight: 700, cursor: 'help' }}>OGW%</TableCell>
                 </Tooltip>
                 <Tooltip title="対戦して勝利した相手のマッチポイントの合計" arrow>
                   <TableCell align="center" sx={{ fontWeight: 700, cursor: 'help' }}>勝手累点</TableCell>
@@ -99,7 +99,7 @@ export default function StandingsTable({ standings, showTiebreakers = true }: St
                     <Typography variant="body2">{formatPercent(s.gwPercent)}</Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Typography variant="body2">{formatPercent(s.oomwPercent)}</Typography>
+                    <Typography variant="body2">{formatPercent(s.ogwPercent)}</Typography>
                   </TableCell>
                   <TableCell align="center">
                     <Typography variant="body2">{s.winTotalPoint}</Typography>
