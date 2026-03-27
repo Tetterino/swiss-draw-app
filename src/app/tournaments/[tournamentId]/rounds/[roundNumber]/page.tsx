@@ -55,9 +55,34 @@ export default function RoundPage() {
   const tournament = getTournament(tournamentId);
   const standings = useStandings(tournament);
 
-  if (!tournament) return null;
+  const round = tournament?.rounds.find((r) => r.roundNumber === roundNumber);
 
-  const round = tournament.rounds.find((r) => r.roundNumber === roundNumber);
+  // Sort matches: by combined match points (descending), BYE at bottom
+  const autoSortedMatches = useMemo(() => {
+    const matches = round?.matches ?? [];
+    const sMap = new Map(standings.map((s) => [s.playerId, s.matchPoints]));
+    return [...matches].sort((a, b) => {
+      if (a.isBye !== b.isBye) return a.isBye ? 1 : -1;
+      const totalA = (sMap.get(a.player1Id) ?? 0) + (sMap.get(a.player2Id ?? '') ?? 0);
+      const totalB = (sMap.get(b.player1Id) ?? 0) + (sMap.get(b.player2Id ?? '') ?? 0);
+      return totalB - totalA;
+    });
+  }, [round?.matches, standings]);
+
+  // Split into non-BYE and BYE matches
+  const nonByeSorted = autoSortedMatches.filter((m) => !m.isBye);
+  const byeMatches = autoSortedMatches.filter((m) => m.isBye);
+
+  // Apply manual order if set, otherwise use auto sort
+  const displayNonBye = useMemo(() => {
+    if (!manualMatchOrder) return nonByeSorted;
+    const matchMap = new Map(nonByeSorted.map((m) => [m.id, m]));
+    return manualMatchOrder
+      .map((id) => matchMap.get(id))
+      .filter((m): m is NonNullable<typeof m> => m != null);
+  }, [manualMatchOrder, nonByeSorted]);
+
+  if (!tournament) return null;
   if (!round) return null;
 
   const nonByeMatches = round.matches.filter((m) => !m.isBye);
@@ -209,30 +234,6 @@ export default function RoundPage() {
     });
     setDropTarget(null);
   };
-
-  // Sort matches: by combined match points (descending), BYE at bottom
-  const autoSortedMatches = useMemo(() => {
-    const sMap = new Map(standings.map((s) => [s.playerId, s.matchPoints]));
-    return [...round.matches].sort((a, b) => {
-      if (a.isBye !== b.isBye) return a.isBye ? 1 : -1;
-      const totalA = (sMap.get(a.player1Id) ?? 0) + (sMap.get(a.player2Id ?? '') ?? 0);
-      const totalB = (sMap.get(b.player1Id) ?? 0) + (sMap.get(b.player2Id ?? '') ?? 0);
-      return totalB - totalA;
-    });
-  }, [round.matches, standings]);
-
-  // Split into non-BYE and BYE matches
-  const nonByeSorted = autoSortedMatches.filter((m) => !m.isBye);
-  const byeMatches = autoSortedMatches.filter((m) => m.isBye);
-
-  // Apply manual order if set, otherwise use auto sort
-  const displayNonBye = useMemo(() => {
-    if (!manualMatchOrder) return nonByeSorted;
-    const matchMap = new Map(nonByeSorted.map((m) => [m.id, m]));
-    return manualMatchOrder
-      .map((id) => matchMap.get(id))
-      .filter((m): m is NonNullable<typeof m> => m != null);
-  }, [manualMatchOrder, nonByeSorted]);
 
   // Final display: non-BYE (in order) + BYE always at bottom
   const displayMatches = [...displayNonBye, ...byeMatches];
