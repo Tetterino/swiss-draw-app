@@ -185,16 +185,16 @@ export function calculateStandings(tournament: Tournament): PlayerStanding[] {
     };
   });
 
-  // Sort: MP desc → OMW% desc → GW% desc → OGW% desc → Opponent Total Point desc → Win Total Point desc
+  // Sort: MP desc → OMW% desc → GW% desc → OGW% desc → Win Total Point desc → Opponent Total Point desc
   standings.sort((a, b) => {
     if (b.matchPoints !== a.matchPoints) return b.matchPoints - a.matchPoints;
     if (b.omwPercent !== a.omwPercent) return b.omwPercent - a.omwPercent;
     if (b.gwPercent !== a.gwPercent) return b.gwPercent - a.gwPercent;
     if (b.ogwPercent !== a.ogwPercent) return b.ogwPercent - a.ogwPercent;
-    if (b.opponentTotalPoint !== a.opponentTotalPoint) {
-      return b.opponentTotalPoint - a.opponentTotalPoint;
+    if (b.winTotalPoint !== a.winTotalPoint) {
+      return b.winTotalPoint - a.winTotalPoint;
     }
-    return b.winTotalPoint - a.winTotalPoint;
+    return b.opponentTotalPoint - a.opponentTotalPoint;
   });
 
   // Assign ranks (tied players share the same rank)
@@ -208,8 +208,8 @@ export function calculateStandings(tournament: Tournament): PlayerStanding[] {
         s.omwPercent === prev.omwPercent &&
         s.gwPercent === prev.gwPercent &&
         s.ogwPercent === prev.ogwPercent &&
-        s.opponentTotalPoint === prev.opponentTotalPoint &&
-        s.winTotalPoint === prev.winTotalPoint;
+        s.winTotalPoint === prev.winTotalPoint &&
+        s.opponentTotalPoint === prev.opponentTotalPoint;
       s.rank = isTied ? prev.rank : i + 1;
     }
   });
