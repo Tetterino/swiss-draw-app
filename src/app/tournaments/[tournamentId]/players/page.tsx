@@ -40,6 +40,10 @@ export default function PlayersPage() {
     dispatch({ type: 'REMOVE_PLAYER', payload: { tournamentId, playerId } });
   };
 
+  const handleRenamePlayer = (playerId: string, name: string) => {
+    dispatch({ type: 'UPDATE_PLAYER', payload: { tournamentId, playerId, name } });
+  };
+
   const handleStartTournament = () => {
     const firstRound = generatePairings(tournament.players, [], tournament.bestOf, tournament.players);
     dispatch({
@@ -72,7 +76,7 @@ export default function PlayersPage() {
             )}
           </Box>
 
-          <PlayerList players={activePlayers} onRemove={handleRemovePlayer} />
+          <PlayerList players={activePlayers} onRemove={handleRemovePlayer} onRename={handleRenamePlayer} />
 
           {!canStart && (
             <Alert severity="info">大会を開始するには2人以上のプレイヤーが必要です。</Alert>
