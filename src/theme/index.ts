@@ -1,23 +1,10 @@
 'use client';
 
-import { createTheme } from '@mui/material/styles';
+import { createTheme, type PaletteMode } from '@mui/material/styles';
 
-const theme = createTheme({
+const shared = {
   typography: {
     fontFamily: '"Noto Sans JP", "Roboto", "Helvetica", "Arial", sans-serif',
-  },
-  palette: {
-    mode: 'dark',
-    primary: {
-      main: '#00bcd4',
-    },
-    secondary: {
-      main: '#e040fb',
-    },
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e',
-    },
   },
   components: {
     MuiCard: {
@@ -32,11 +19,8 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 8,
-          textTransform: 'none',
+          textTransform: 'none' as const,
           fontWeight: 600,
-          '&:hover': {
-            boxShadow: '0 0 8px rgba(0, 188, 212, 0.4)',
-          },
         },
       },
     },
@@ -48,6 +32,28 @@ const theme = createTheme({
       },
     },
   },
-});
+};
 
+export function buildTheme(mode: PaletteMode) {
+  return createTheme({
+    ...shared,
+    palette: {
+      mode,
+      primary: {
+        main: mode === 'dark' ? '#00bcd4' : '#0288d1',
+      },
+      secondary: {
+        main: '#e040fb',
+      },
+      ...(mode === 'dark'
+        ? {
+            background: { default: '#121212', paper: '#1e1e1e' },
+          }
+        : {}),
+    },
+  });
+}
+
+// Default export for backwards compat (dark)
+const theme = buildTheme('dark');
 export default theme;

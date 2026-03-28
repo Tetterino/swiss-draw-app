@@ -1,9 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Noto_Sans_JP } from 'next/font/google';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import theme from '@/theme';
 import Providers from '@/components/layout/Providers';
 import './globals.css';
 
@@ -22,7 +19,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#1976d2',
+  themeColor: '#121212',
 };
 
 export default function RootLayout({
@@ -34,10 +31,7 @@ export default function RootLayout({
     <html lang="ja">
       <body className={notoSansJP.className}>
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <Providers>{children}</Providers>
-          </ThemeProvider>
+          <Providers>{children}</Providers>
         </AppRouterCacheProvider>
       </body>
     </html>
