@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
@@ -12,10 +12,13 @@ import Tab from '@mui/material/Tab';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import UndoIcon from '@mui/icons-material/Undo';
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import AppHeader from '@/components/layout/AppHeader';
 import NavigationStepper from '@/components/layout/NavigationStepper';
 import ConfirmDialog from '@/components/layout/ConfirmDialog';
 import MatchCard from '@/components/round/MatchCard';
+import SortableMatchCard from '@/components/round/SortableMatchCard';
 import RoundProgressBar from '@/components/round/RoundProgressBar';
 import StandingsTable from '@/components/standings/StandingsTable';
 import { useTournament } from '@/hooks/useTournament';
@@ -41,15 +44,45 @@ export default function RoundPage() {
   const [dropTarget, setDropTarget] = useState<{ id: string; name: string } | null>(null);
   const [showStandings, setShowStandings] = useState(false);
   const [pendingResults, setPendingResults] = useState<Record<string, PendingResult>>({});
+  const [manualMatchOrder, setManualMatchOrder] = useState<string[] | null>(null);
+
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 8 } });
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } });
+  const sensors = useSensors(pointerSensor, touchSensor);
 
   const tournamentId = params.tournamentId as string;
   const roundNumber = parseInt(params.roundNumber as string, 10);
   const tournament = getTournament(tournamentId);
   const standings = useStandings(tournament);
 
-  if (!tournament) return null;
+  const round = tournament?.rounds.find((r) => r.roundNumber === roundNumber);
 
-  const round = tournament.rounds.find((r) => r.roundNumber === roundNumber);
+  // Sort matches: by combined match points (descending), BYE at bottom
+  const autoSortedMatches = useMemo(() => {
+    const matches = round?.matches ?? [];
+    const sMap = new Map(standings.map((s) => [s.playerId, s.matchPoints]));
+    return [...matches].sort((a, b) => {
+      if (a.isBye !== b.isBye) return a.isBye ? 1 : -1;
+      const totalA = (sMap.get(a.player1Id) ?? 0) + (sMap.get(a.player2Id ?? '') ?? 0);
+      const totalB = (sMap.get(b.player1Id) ?? 0) + (sMap.get(b.player2Id ?? '') ?? 0);
+      return totalB - totalA;
+    });
+  }, [round?.matches, standings]);
+
+  // Split into non-BYE and BYE matches
+  const nonByeSorted = autoSortedMatches.filter((m) => !m.isBye);
+  const byeMatches = autoSortedMatches.filter((m) => m.isBye);
+
+  // Apply manual order if set, otherwise use auto sort
+  const displayNonBye = useMemo(() => {
+    if (!manualMatchOrder) return nonByeSorted;
+    const matchMap = new Map(nonByeSorted.map((m) => [m.id, m]));
+    return manualMatchOrder
+      .map((id) => matchMap.get(id))
+      .filter((m): m is NonNullable<typeof m> => m != null);
+  }, [manualMatchOrder, nonByeSorted]);
+
+  if (!tournament) return null;
   if (!round) return null;
 
   const nonByeMatches = round.matches.filter((m) => !m.isBye);
@@ -202,21 +235,27 @@ export default function RoundPage() {
     setDropTarget(null);
   };
 
-  // Sort matches: by combined match points (descending), BYE at bottom
-  const standingMap = new Map(standings.map((s) => [s.playerId, s.matchPoints]));
-  const sortedMatches = [...round.matches].sort((a, b) => {
-    if (a.isBye !== b.isBye) return a.isBye ? 1 : -1;
-    const totalA = (standingMap.get(a.player1Id) ?? 0) + (standingMap.get(a.player2Id ?? '') ?? 0);
-    const totalB = (standingMap.get(b.player1Id) ?? 0) + (standingMap.get(b.player2Id ?? '') ?? 0);
-    return totalB - totalA;
-  });
+  // Final display: non-BYE (in order) + BYE always at bottom
+  const displayMatches = [...displayNonBye, ...byeMatches];
 
-  // Assign table numbers based on sorted display order (non-BYE only)
+  // Assign table numbers based on display order (non-BYE only)
   const tableNumberMap = new Map<string, number>();
   let tblNum = 0;
-  for (const m of sortedMatches) {
-    if (!m.isBye) tableNumberMap.set(m.id, ++tblNum);
+  for (const m of displayNonBye) {
+    tableNumberMap.set(m.id, ++tblNum);
   }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const currentOrder = manualMatchOrder ?? nonByeSorted.map((m) => m.id);
+    const oldIndex = currentOrder.indexOf(active.id as string);
+    const newIndex = currentOrder.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    setManualMatchOrder(arrayMove(currentOrder, oldIndex, newIndex));
+  };
 
   const canDrop = isLatestRound && !round.isCompleted;
 
@@ -225,6 +264,7 @@ export default function RoundPage() {
       setShowStandings(true);
     } else {
       setShowStandings(false);
+      setManualMatchOrder(null);
       if (newValue + 1 !== roundNumber) {
         router.push(`/tournaments/${tournamentId}/rounds/${newValue + 1}`);
       }
@@ -265,21 +305,39 @@ export default function RoundPage() {
               <RoundProgressBar round={round} />
             </Box>
 
-            <Stack spacing={1.5}>
-              {sortedMatches.map((match) => (
-                <MatchCard
-                  key={match.id}
-                  match={match}
-                  players={tournament.players}
-                  bestOf={tournament.bestOf}
-                  onChangeResult={handleChangeResult}
-                  tableNumber={match.isBye ? 0 : (tableNumberMap.get(match.id) ?? 0)}
-                  pendingResult={pendingResults[match.id]}
-                  canDrop={canDrop}
-                  onDropPlayer={(playerId, playerName) => setDropTarget({ id: playerId, name: playerName })}
-                />
-              ))}
-            </Stack>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={displayNonBye.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+                <Stack spacing={1.5}>
+                  {displayMatches.map((match) =>
+                    match.isBye ? (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        players={tournament.players}
+                        bestOf={tournament.bestOf}
+                        onChangeResult={handleChangeResult}
+                        tableNumber={0}
+                        pendingResult={pendingResults[match.id]}
+                        canDrop={canDrop}
+                        onDropPlayer={(playerId, playerName) => setDropTarget({ id: playerId, name: playerName })}
+                      />
+                    ) : (
+                      <SortableMatchCard
+                        key={match.id}
+                        match={match}
+                        players={tournament.players}
+                        bestOf={tournament.bestOf}
+                        onChangeResult={handleChangeResult}
+                        tableNumber={tableNumberMap.get(match.id) ?? 0}
+                        pendingResult={pendingResults[match.id]}
+                        canDrop={canDrop}
+                        onDropPlayer={(playerId, playerName) => setDropTarget({ id: playerId, name: playerName })}
+                      />
+                    )
+                  )}
+                </Stack>
+              </SortableContext>
+            </DndContext>
 
             {(allMatchesCompleted || (allMatchesReady && hasPendingResults)) && !round.isCompleted && (
               <Box sx={{ mt: 3 }}>

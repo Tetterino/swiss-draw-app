@@ -12,6 +12,7 @@ import IconButton from '@mui/material/IconButton';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ReplayIcon from '@mui/icons-material/Replay';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import { Match, Player, GameResult } from '@/types';
 
@@ -31,9 +32,10 @@ interface MatchCardProps {
   pendingResult?: PendingResult;
   canDrop?: boolean;
   onDropPlayer?: (playerId: string, playerName: string) => void;
+  dragHandleProps?: Record<string, unknown>;
 }
 
-export default function MatchCard({ match, players, bestOf, onChangeResult, tableNumber, pendingResult, canDrop, onDropPlayer }: MatchCardProps) {
+export default function MatchCard({ match, players, bestOf, onChangeResult, tableNumber, pendingResult, canDrop, onDropPlayer, dragHandleProps }: MatchCardProps) {
   const player1 = players.find((p) => p.id === match.player1Id);
   const player2 = match.player2Id ? players.find((p) => p.id === match.player2Id) : null;
 
@@ -216,11 +218,22 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
       }}
     >
       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-        {/* Header: table number + status + reset */}
+        {/* Header: drag handle + table number + status + reset */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            Table {tableNumber}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+            {dragHandleProps && (
+              <Box
+                component="span"
+                {...dragHandleProps}
+                sx={{ display: 'flex', cursor: 'grab', touchAction: 'none', color: 'text.disabled' }}
+              >
+                <DragIndicatorIcon fontSize="small" />
+              </Box>
+            )}
+            <Typography variant="caption" color="text.secondary">
+              Table {tableNumber}
+            </Typography>
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             {hasInput && !match.isCompleted && (
               <Chip
