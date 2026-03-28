@@ -2,7 +2,7 @@ import { Tournament, PlayerStanding, Match, Round } from '@/types';
 
 const WIN_POINTS = 3;
 const DRAW_POINTS = 1;
-const MIN_OMW_PERCENT = 0.33;
+const MIN_MWP_FLOOR = 1 / 3;
 
 interface MatchRecord {
   matchWins: number;
@@ -39,9 +39,8 @@ function getMatchRecord(playerId: string, rounds: Round[]): MatchRecord {
       record.matchesPlayed++;
 
       if (match.isBye) {
-        // BYE: count as 2-0 win
+        // BYE: count as match win but exclude from game stats (per MTG rules)
         record.matchWins++;
-        record.gameWins += 2;
         continue;
       }
 
@@ -104,12 +103,12 @@ export function calculateStandings(tournament: Tournament): PlayerStanding[] {
   // Calculate OMW% for each player
   function calcOMWPercent(playerId: string): number {
     const record = records.get(playerId)!;
-    if (record.opponents.length === 0) return MIN_OMW_PERCENT;
+    if (record.opponents.length === 0) return MIN_MWP_FLOOR;
 
     const opponentMWPs = record.opponents.map((oppId) => {
       const oppRecord = records.get(oppId);
-      if (!oppRecord) return MIN_OMW_PERCENT;
-      return Math.max(getMatchWinPercent(oppRecord), MIN_OMW_PERCENT);
+      if (!oppRecord) return MIN_MWP_FLOOR;
+      return Math.max(getMatchWinPercent(oppRecord), MIN_MWP_FLOOR);
     });
 
     return opponentMWPs.reduce((sum, v) => sum + v, 0) / opponentMWPs.length;
@@ -118,12 +117,12 @@ export function calculateStandings(tournament: Tournament): PlayerStanding[] {
   // Calculate OGW% for each player
   function calcOGWPercent(playerId: string): number {
     const record = records.get(playerId)!;
-    if (record.opponents.length === 0) return 0;
+    if (record.opponents.length === 0) return MIN_MWP_FLOOR;
 
     const opponentGWPs = record.opponents.map((oppId) => {
       const oppRecord = records.get(oppId);
-      if (!oppRecord) return 0;
-      return getGameWinPercent(oppRecord);
+      if (!oppRecord) return MIN_MWP_FLOOR;
+      return Math.max(getGameWinPercent(oppRecord), MIN_MWP_FLOOR);
     });
 
     return opponentGWPs.reduce((sum, v) => sum + v, 0) / opponentGWPs.length;
