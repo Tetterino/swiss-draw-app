@@ -44,19 +44,19 @@ export default function PlayerBulkImport({ onImport }: PlayerBulkImportProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // CSVファイルを選択したときの処理
-  const handleCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const csvText = event.target?.result as string;
-      if (csvText) {
-        const names = parseCsvToNames(csvText);
-        setText(names.join('\n'));
-      }
-    };
-    reader.readAsText(file, 'UTF-8');
+    const buf = await file.arrayBuffer();
+    const utf8Text = new TextDecoder('utf-8').decode(buf);
+    // UTF-8 デコード失敗時は置換文字 (U+FFFD) が含まれるので Shift_JIS で再デコード
+    const csvText = utf8Text.includes('\uFFFD')
+      ? new TextDecoder('shift-jis').decode(buf)
+      : utf8Text;
+
+    const names = parseCsvToNames(csvText);
+    setText(names.join('\n'));
     e.target.value = '';
   };
 

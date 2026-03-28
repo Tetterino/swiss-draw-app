@@ -10,6 +10,7 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
+import { useTheme } from '@mui/material/styles';
 import { PlayerStanding } from '@/types';
 
 interface StandingsTableProps {
@@ -21,7 +22,33 @@ function formatPercent(value: number): string {
   return (value * 100).toFixed(2) + '%';
 }
 
+const darkGroupColors = [
+  'rgba(0, 188, 212, 0.50)', // グループ0: 1位
+  'rgba(0, 188, 212, 0.35)', // グループ1: 2-3位
+  'rgba(0, 188, 212, 0.22)', // グループ2: 4-7位
+  'rgba(0, 188, 212, 0.13)', // グループ3: 8-15位
+  'rgba(0, 188, 212, 0.07)', // グループ4: 16-31位
+  'rgba(0, 188, 212, 0.03)', // グループ5: 32位
+];
+
+const lightGroupColors = [
+  'rgba(0, 131, 148, 0.75)', // グループ0: 1位
+  'rgba(0, 131, 148, 0.52)', // グループ1: 2-3位
+  'rgba(0, 131, 148, 0.33)', // グループ2: 4-7位
+  'rgba(0, 131, 148, 0.19)', // グループ3: 8-15位
+  'rgba(0, 131, 148, 0.09)', // グループ4: 16-31位
+  'rgba(0, 131, 148, 0.03)', // グループ5: 32位
+];
+
+function getRankColor(rank: number, isDark: boolean): string | undefined {
+  if (rank > 32) return undefined;
+  const group = rank === 1 ? 0 : Math.floor(Math.log2(rank));
+  return isDark ? darkGroupColors[group] : lightGroupColors[group];
+}
+
 export default function StandingsTable({ standings, showTiebreakers = true }: StandingsTableProps) {
+  const isDark = useTheme().palette.mode === 'dark';
+
   if (standings.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
@@ -59,17 +86,17 @@ export default function StandingsTable({ standings, showTiebreakers = true }: St
             <TableRow
               key={s.playerId}
               sx={{
-                backgroundColor: s.rank <= 3 ? `rgba(0, 188, 212, ${0.15 - (s.rank - 1) * 0.04})` : undefined,
+                backgroundColor: getRankColor(s.rank, isDark),
                 opacity: s.isDropped ? 0.5 : 1,
               }}
             >
               <TableCell>
-                <Typography variant="body2" sx={{ fontWeight: s.rank <= 3 ? 700 : 400 }}>
+                <Typography variant="body2" sx={{ fontWeight: s.rank === 1 ? 700 : 400 }}>
                   {s.rank}
                 </Typography>
               </TableCell>
               <TableCell>
-                <Typography variant="body2" sx={{ fontWeight: s.rank <= 3 ? 700 : 400 }} noWrap>
+                <Typography variant="body2" sx={{ fontWeight: s.rank === 1 ? 700 : 400 }} noWrap>
                   {s.playerName}
                   {s.isDropped && (
                     <Chip label="Drop" size="small" color="error" variant="outlined" sx={{ ml: 1 }} />
