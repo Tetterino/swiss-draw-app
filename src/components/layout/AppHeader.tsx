@@ -31,14 +31,14 @@ export default function AppHeader({ title, backHref }: AppHeaderProps) {
     >
       <Toolbar>
         {backHref && (
-          <IconButton edge="start" color="inherit" onClick={() => router.push(backHref)} sx={{ mr: 1 }}>
+          <IconButton edge="start" onClick={() => router.push(backHref)} sx={{ mr: 1, color: 'text.primary' }}>
             <ArrowBackIcon />
           </IconButton>
         )}
         <Typography variant="h6" component="h1" sx={{ flexGrow: 1, fontWeight: 700, color: 'primary.main' }}>
           {title}
         </Typography>
-        <IconButton color="inherit" onClick={toggle} size="small">
+        <IconButton onClick={toggle} size="small" sx={{ color: 'text.primary' }}>
           {resolved === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
         </IconButton>
       </Toolbar>
