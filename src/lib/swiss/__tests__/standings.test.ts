@@ -154,7 +154,7 @@ describe('calculateStandings', () => {
     expect(sA.rank).toBeLessThan(sB.rank);
   });
 
-  it('counts BYE as 2-0 match win', () => {
+  it('counts BYE as match win but excludes from game stats', () => {
     const players = [mkPlayer('A')];
     const rounds = [mkRound(1, [mkByeMatch('A')])];
     const t = mkTournament(players, rounds);
@@ -162,7 +162,8 @@ describe('calculateStandings', () => {
 
     expect(standings[0].matchWins).toBe(1);
     expect(standings[0].matchPoints).toBe(3);
-    expect(standings[0].gameWins).toBe(2);
+    // BYE should NOT count toward game stats (per MTG rules)
+    expect(standings[0].gameWins).toBe(0);
     expect(standings[0].gameLosses).toBe(0);
   });
 
@@ -210,15 +211,15 @@ describe('calculateStandings', () => {
     expect(standings[0].matchDraws).toBe(1);
   });
 
-  it('computes OMW% with floor of 0.33', () => {
-    // A beats B, B has 0 wins → B's MWP = 0, but OMW floor = 0.33
+  it('computes OMW% with floor of 1/3', () => {
+    // A beats B, B has 0 wins → B's MWP = 0, but OMW floor = 1/3
     const players = [mkPlayer('A'), mkPlayer('B')];
     const rounds = [mkRound(1, [mkMatch('A', 'B', 2, 0)])];
     const t = mkTournament(players, rounds);
     const standings = calculateStandings(t);
 
     const sA = standings.find((s) => s.playerId === 'A')!;
-    expect(sA.omwPercent).toBeCloseTo(0.33, 2);
+    expect(sA.omwPercent).toBeCloseTo(1 / 3, 5);
   });
 
   it('computes GW% correctly', () => {
@@ -252,6 +253,35 @@ describe('calculateStandings', () => {
     expect(sB.matchWins).toBe(0);
     expect(sA.matchDraws).toBe(0);
     expect(sB.matchDraws).toBe(0);
+  });
+
+  it('BYE does not inflate GW% — only real games count', () => {
+    // A has 1 real win (2-1) + 1 BYE; B has 1 real loss (1-2)
+    const players = [mkPlayer('A'), mkPlayer('B')];
+    const rounds = [
+      mkRound(1, [mkMatch('A', 'B', 2, 1)]),
+      mkRound(2, [mkByeMatch('A')]),
+    ];
+    const t = mkTournament(players, rounds);
+    const standings = calculateStandings(t);
+
+    const sA = standings.find((s) => s.playerId === 'A')!;
+    // BYE excluded from game stats → only real match counts
+    expect(sA.gameWins).toBe(2);
+    expect(sA.gameLosses).toBe(1);
+    // GW% = (2×3)/(3×3) = 6/9
+    expect(sA.gwPercent).toBeCloseTo(6 / 9, 5);
+  });
+
+  it('OGW% applies 1/3 floor to each opponent GW%', () => {
+    // A beats B (2-0), B has 0 game wins → B's GW% = 0, floored to 1/3 for OGW
+    const players = [mkPlayer('A'), mkPlayer('B')];
+    const rounds = [mkRound(1, [mkMatch('A', 'B', 2, 0)])];
+    const t = mkTournament(players, rounds);
+    const standings = calculateStandings(t);
+
+    const sA = standings.find((s) => s.playerId === 'A')!;
+    expect(sA.ogwPercent).toBeCloseTo(1 / 3, 5);
   });
 
   it('both-loss does not count as draw (0 points, not 1)', () => {
