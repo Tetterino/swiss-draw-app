@@ -103,7 +103,7 @@ describe('calculateStandings', () => {
   });
 
   it('assigns same rank to players with identical tiebreakers', () => {
-    // Two players with no matches → both 0 MP, same OMW/GW/OGW → tied rank 1
+    // Two players with no matches → same tiebreakers → tied rank 1
     const players = [mkPlayer('A'), mkPlayer('B')];
     const t = mkTournament(players, []);
     const standings = calculateStandings(t);
