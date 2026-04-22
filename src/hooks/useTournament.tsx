@@ -18,9 +18,10 @@ export type TournamentAction =
   | { type: 'COMPLETE_ROUND'; payload: { tournamentId: string; roundNumber: number } }
   | { type: 'ADD_ROUND'; payload: { tournamentId: string; round: Round } }
   | { type: 'FINISH_TOURNAMENT'; payload: string }
-  | { type: 'UNDO_LAST_ROUND'; payload: { tournamentId: string } };
+  | { type: 'UNDO_LAST_ROUND'; payload: { tournamentId: string } }
+  | { type: 'RESHUFFLE_ROUND'; payload: { tournamentId: string; round: Round } };
 
-interface TournamentState {
+export interface TournamentState {
   tournaments: Tournament[];
   loaded: boolean;
 }
@@ -41,7 +42,7 @@ export function resolvePlayerName(name: string, existingNames: string[]): string
   return `${name} (${n})`;
 }
 
-function tournamentReducer(state: TournamentState, action: TournamentAction): TournamentState {
+export function tournamentReducer(state: TournamentState, action: TournamentAction): TournamentState {
   switch (action.type) {
     case 'LOAD_TOURNAMENTS':
       return { ...state, tournaments: action.payload, loaded: true };
@@ -193,6 +194,21 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
         tournaments: state.tournaments.map((t) => {
           if (t.id !== action.payload) return t;
           return { ...t, phase: 'finished' as TournamentPhase };
+        }),
+      };
+    }
+
+    case 'RESHUFFLE_ROUND': {
+      return {
+        ...state,
+        tournaments: state.tournaments.map((t) => {
+          if (t.id !== action.payload.tournamentId) return t;
+          return {
+            ...t,
+            rounds: t.rounds.map((r) =>
+              r.roundNumber === action.payload.round.roundNumber ? action.payload.round : r
+            ),
+          };
         }),
       };
     }

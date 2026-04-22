@@ -12,6 +12,7 @@ import Tab from '@mui/material/Tab';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import UndoIcon from '@mui/icons-material/Undo';
+import ShuffleIcon from '@mui/icons-material/Shuffle';
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import AppHeader from '@/components/layout/AppHeader';
@@ -41,6 +42,7 @@ export default function RoundPage() {
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [confirmEarlyFinish, setConfirmEarlyFinish] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
+  const [confirmReshuffle, setConfirmReshuffle] = useState(false);
   const [dropTarget, setDropTarget] = useState<{ id: string; name: string } | null>(null);
   const [showStandings, setShowStandings] = useState(false);
   const [pendingResults, setPendingResults] = useState<Record<string, PendingResult>>({});
@@ -235,6 +237,14 @@ export default function RoundPage() {
     setDropTarget(null);
   };
 
+  const handleReshuffle = () => {
+    const newRound = generatePairings(tournament.players, [], tournament.bestOf, tournament.players);
+    dispatch({ type: 'RESHUFFLE_ROUND', payload: { tournamentId, round: newRound } });
+    setPendingResults({});
+    setManualMatchOrder(null);
+    setConfirmReshuffle(false);
+  };
+
   // Final display: non-BYE (in order) + BYE always at bottom
   const displayMatches = [...displayNonBye, ...byeMatches];
 
@@ -368,6 +378,21 @@ export default function RoundPage() {
               </Box>
             )}
 
+            {roundNumber === 1 && !round.isCompleted && (
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  fullWidth
+                  startIcon={<ShuffleIcon />}
+                  onClick={() => setConfirmReshuffle(true)}
+                  sx={{ py: 1.5 }}
+                >
+                  ペアリングを再生成
+                </Button>
+              </Box>
+            )}
+
             {isLatestRound && tournament.rounds.length >= 2 && (!round.isCompleted || tournament.phase === 'finished') && (
               <Box sx={{ mt: 2 }}>
                 <Button
@@ -438,6 +463,18 @@ export default function RoundPage() {
           confirmLabel={tournament.phase === 'finished' ? '再開' : '戻す'}
           onConfirm={handleUndoRound}
           onCancel={() => setConfirmUndo(false)}
+        />
+        <ConfirmDialog
+          open={confirmReshuffle}
+          title="ペアリングを再生成"
+          message={
+            hasPendingResults || nonByeMatches.some((m) => m.isCompleted)
+              ? '入力済みの結果はすべてクリアされます。ラウンド1のペアリングをランダムに再生成しますか？'
+              : 'ラウンド1のペアリングをランダムに再生成しますか？'
+          }
+          confirmLabel="再生成"
+          onConfirm={handleReshuffle}
+          onCancel={() => setConfirmReshuffle(false)}
         />
       </Container>
     </>
