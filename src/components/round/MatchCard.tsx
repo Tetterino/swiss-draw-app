@@ -9,11 +9,14 @@ import Chip from '@mui/material/Chip';
 import ButtonBase from '@mui/material/ButtonBase';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
+import Collapse from '@mui/material/Collapse';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ReplayIcon from '@mui/icons-material/Replay';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { Match, Player, GameResult } from '@/types';
 
 interface PendingResult {
@@ -53,6 +56,8 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
   const [isBothLoss, setIsBothLoss] = useState(
     pendingResult ? pendingResult.isBothLoss : (match.isBothLoss ?? false)
   );
+
+  const [expanded, setExpanded] = useState(false);
 
   const inputDisabled = match.isCompleted || isBothLoss;
 
@@ -188,7 +193,20 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
             </Box>
           </Box>
 
-          {dropRow}
+          {canDrop && onDropPlayer && (
+            <>
+              <ButtonBase
+                onClick={() => setExpanded((v) => !v)}
+                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, width: '100%', mt: 0.75, py: 0.25 }}
+              >
+                {expanded ? <ExpandLessIcon sx={{ fontSize: 14, color: 'text.secondary' }} /> : <ExpandMoreIcon sx={{ fontSize: 14, color: 'text.secondary' }} />}
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>詳細</Typography>
+              </ButtonBase>
+              <Collapse in={expanded}>
+                {dropRow}
+              </Collapse>
+            </>
+          )}
         </CardContent>
       </Card>
     );
@@ -215,6 +233,7 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
       sx={{
         borderColor: match.isCompleted ? 'success.main' : hasInput ? 'info.main' : 'divider',
         borderWidth: match.isCompleted || hasInput ? 2 : 1,
+        margin: match.isCompleted || hasInput ? 0 : '1px',
       }}
     >
       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -272,7 +291,9 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
 
           <Box sx={{ ...zoneSx, minWidth: 72 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, ...(displayBothLoss ? { color: 'error.main' } : {}) }}>
-              {p1Wins} - {p2Wins}
+              <Box component="span" sx={{ opacity: p2Wins > p1Wins ? 0.4 : 1 }}>{p1Wins}</Box>
+              {' - '}
+              <Box component="span" sx={{ opacity: p1Wins > p2Wins ? 0.4 : 1 }}>{p2Wins}</Box>
             </Typography>
             {displayBothLoss ? (
               <Typography variant="caption" color="error">
@@ -317,20 +338,14 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
               </IconButton>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              {displayBothLoss ? (
-                <Box sx={{ minWidth: 72 }} />
-              ) : (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  onClick={handleBothLoss}
-                  sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0, whiteSpace: 'nowrap' }}
-                >
-                  両負け
-                </Button>
-              )}
+            <Box sx={{ minWidth: 72, display: 'flex', justifyContent: 'center' }}>
+              <ButtonBase
+                onClick={() => setExpanded((v) => !v)}
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.25, py: 0.25, px: 0.5, borderRadius: 1 }}
+              >
+                {expanded ? <ExpandLessIcon sx={{ fontSize: 14, color: 'text.secondary' }} /> : <ExpandMoreIcon sx={{ fontSize: 14, color: 'text.secondary' }} />}
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>詳細</Typography>
+              </ButtonBase>
             </Box>
 
             <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 0.25 }}>
@@ -357,7 +372,25 @@ export default function MatchCard({ match, players, bestOf, onChangeResult, tabl
           </Box>
         )}
 
-        {dropRow}
+        {!match.isCompleted && (
+          <Collapse in={expanded}>
+            {!displayBothLoss && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 0.75 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  onClick={handleBothLoss}
+                  fullWidth
+                  sx={{ fontSize: '0.7rem', py: 0.5 }}
+                >
+                  両負け
+                </Button>
+              </Box>
+            )}
+            {dropRow}
+          </Collapse>
+        )}
       </CardContent>
     </Card>
   );
