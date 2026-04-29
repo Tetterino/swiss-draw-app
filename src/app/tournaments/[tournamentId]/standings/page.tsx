@@ -33,7 +33,20 @@ export default function StandingsPage() {
   const lastRound = tournament.rounds.length;
 
   const handleExportCsv = () => {
-    const header = ['順位', 'プレイヤー', 'MP', '勝', '敗', '分', 'OMW%', 'GW%', 'OGW%', 'ステータス'];
+    const header = [
+      '順位',
+      'プレイヤー',
+      'MP',
+      '勝',
+      '敗',
+      '分',
+      'OMW%',
+      'GW%',
+      'OGW%',
+      '勝手累点',
+      '対手累点',
+      'ステータス',
+    ];
     const rows = standings.map((s) => [
       s.rank,
       s.playerName,
@@ -44,6 +57,8 @@ export default function StandingsPage() {
       (s.omwPercent * 100).toFixed(2),
       (s.gwPercent * 100).toFixed(2),
       (s.ogwPercent * 100).toFixed(2),
+      s.winTotalPoint,
+      s.opponentTotalPoint,
       s.isDropped ? 'Dropped' : 'Active',
     ]);
     const bom = '\uFEFF';
