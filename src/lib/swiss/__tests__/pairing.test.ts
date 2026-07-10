@@ -166,6 +166,41 @@ describe('generatePairings', () => {
     }
   });
 
+  it.each([20, 64])('avoids rematches with %i players across multiple rounds', (n) => {
+    const players = Array.from({ length: n }, (_, i) => mkPlayer(`P${i}`));
+    const totalRounds = Math.ceil(Math.log2(n));
+    let rounds: Round[] = [];
+
+    // Simulate all rounds except the last
+    for (let r = 0; r < totalRounds - 1; r++) {
+      const round = generatePairings(players, rounds, 3, players);
+      // Simulate results: player1 always wins
+      const completed = mkRound(round.roundNumber, round.matches.map((m) =>
+        m.isBye ? m : mkMatch(m.player1Id, m.player2Id!, 2, 0)
+      ));
+      rounds = [...rounds, completed];
+    }
+
+    // Build opponent history
+    const opponentPairs = new Set<string>();
+    for (const round of rounds) {
+      for (const m of round.matches) {
+        if (m.isBye || !m.player2Id) continue;
+        opponentPairs.add([m.player1Id, m.player2Id].sort().join('-'));
+      }
+    }
+
+    // Generate the final round multiple times and check no rematches
+    for (let trial = 0; trial < 10; trial++) {
+      const nextRound = generatePairings(players, rounds, 3, players);
+      for (const m of nextRound.matches) {
+        if (m.isBye || !m.player2Id) continue;
+        const pair = [m.player1Id, m.player2Id].sort().join('-');
+        expect(opponentPairs.has(pair), `rematch in round ${totalRounds}: ${pair}`).toBe(false);
+      }
+    }
+  });
+
   it('floats a player down when within-group pairing is impossible', () => {
     // 6 players, R1: A>B, C>D, E>F → 3 winners (odd), 3 losers (odd)
     // One player must float between groups

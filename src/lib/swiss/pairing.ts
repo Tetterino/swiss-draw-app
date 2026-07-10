@@ -2,7 +2,8 @@ import { Player, Round, Match, PlayerStanding } from '@/types';
 import { calculateStandings, getPlayerOpponents } from './standings';
 import { selectByePlayer, createByeMatch } from './bye';
 
-const MAX_BACKTRACK = 100;
+const MAX_BACKTRACK = 1000;
+const SHUFFLE_RETRIES = 5;
 
 function generateMatchId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -94,6 +95,29 @@ export function generatePairings(
 }
 
 /**
+ * Try pairing with rematch avoidance, reshuffling and retrying up to
+ * SHUFFLE_RETRIES times before falling back to allowing rematches.
+ */
+function tryPairingWithRetries(
+  pool: Player[],
+  opponentHistory: Map<string, Set<string>>
+): Match[] | null {
+  // First attempt with current order
+  const first = tryPairing(pool, opponentHistory, true);
+  if (first) return first;
+
+  // Retry with reshuffled order
+  for (let i = 0; i < SHUFFLE_RETRIES; i++) {
+    const shuffled = shuffle([...pool]);
+    const result = tryPairing(shuffled, opponentHistory, true);
+    if (result) return result;
+  }
+
+  // Fall back to allowing rematches
+  return tryPairing(pool, opponentHistory, false);
+}
+
+/**
  * Pair each MP group independently, carrying unpaired "floaters" down
  * to the next group. This ensures within-group pairing is always
  * preferred over cross-group pairing.
@@ -112,8 +136,7 @@ function pairByGroups(
     if (pool.length === 0) continue;
 
     if (pool.length % 2 === 0) {
-      let paired = tryPairing(pool, opponentHistory, true);
-      if (!paired) paired = tryPairing(pool, opponentHistory, false);
+      const paired = tryPairingWithRetries(pool, opponentHistory);
       if (paired) {
         allMatches.push(...paired);
         continue;
@@ -125,8 +148,7 @@ function pairByGroups(
     let success = false;
     for (let fi = pool.length - 1; fi >= 0; fi--) {
       const remaining = [...pool.slice(0, fi), ...pool.slice(fi + 1)];
-      let paired = tryPairing(remaining, opponentHistory, true);
-      if (!paired) paired = tryPairing(remaining, opponentHistory, false);
+      const paired = tryPairingWithRetries(remaining, opponentHistory);
       if (paired) {
         allMatches.push(...paired);
         floaters = [pool[fi]];
@@ -142,8 +164,7 @@ function pairByGroups(
 
   // Pair any remaining floaters (shouldn't happen with even total)
   if (floaters.length >= 2) {
-    let paired = tryPairing(floaters, opponentHistory, true);
-    if (!paired) paired = tryPairing(floaters, opponentHistory, false);
+    const paired = tryPairingWithRetries(floaters, opponentHistory);
     if (paired) allMatches.push(...paired);
   }
 
