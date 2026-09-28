@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
 import { Tournament, Player, Round, Match, GameResult, TournamentPhase } from '@/types';
 import { loadTournaments, saveTournaments } from '@/lib/storage';
+import { addPlayersToRound } from '@/lib/swiss/addPlayers';
 
 // Actions
 export type TournamentAction =
@@ -20,7 +21,8 @@ export type TournamentAction =
   | { type: 'ADD_ROUND'; payload: { tournamentId: string; round: Round } }
   | { type: 'FINISH_TOURNAMENT'; payload: string }
   | { type: 'UNDO_LAST_ROUND'; payload: { tournamentId: string } }
-  | { type: 'RESHUFFLE_ROUND'; payload: { tournamentId: string; round: Round } };
+  | { type: 'RESHUFFLE_ROUND'; payload: { tournamentId: string; round: Round } }
+  | { type: 'ADD_PLAYERS_TO_ROUND'; payload: { tournamentId: string; roundNumber: number; names: string[] } };
 
 export interface TournamentState {
   tournaments: Tournament[];
@@ -226,6 +228,47 @@ export function tournamentReducer(state: TournamentState, action: TournamentActi
             rounds: t.rounds.map((r) =>
               r.roundNumber === action.payload.round.roundNumber ? action.payload.round : r
             ),
+          };
+        }),
+      };
+    }
+
+    case 'ADD_PLAYERS_TO_ROUND': {
+      const { tournamentId, roundNumber, names } = action.payload;
+      const cleanNames = names.map((n) => n.trim()).filter((n) => n.length > 0);
+      if (cleanNames.length === 0) return state;
+
+      return {
+        ...state,
+        tournaments: state.tournaments.map((t) => {
+          if (t.id !== tournamentId) return t;
+
+          // Round 1 only: a player joining later would have fewer matches played
+          // than everyone else, which makes the standings meaningless.
+          if (roundNumber !== 1) return t;
+
+          const target = t.rounds.find((r) => r.roundNumber === roundNumber);
+          // A finished round is already part of the standings; leave it alone.
+          if (!target || target.isCompleted) return t;
+
+          const allNames = t.players.map((p) => p.name);
+          const newPlayers: Player[] = cleanNames.map((name) => {
+            const resolvedName = resolvePlayerName(name, allNames);
+            allNames.push(resolvedName);
+            return { id: generateId(), name: resolvedName, status: 'active' as const };
+          });
+
+          const updatedRound = addPlayersToRound(target, newPlayers.map((p) => p.id));
+
+          const players = [...t.players, ...newPlayers];
+          const activeCount = players.filter((p) => p.status === 'active').length;
+
+          return {
+            ...t,
+            players,
+            rounds: t.rounds.map((r) => (r.roundNumber === roundNumber ? updatedRound : r)),
+            // More players can mean more rounds are needed; never shorten a running tournament.
+            totalRounds: Math.max(t.totalRounds, calculateTotalRounds(activeCount)),
           };
         }),
       };

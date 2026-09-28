@@ -21,6 +21,7 @@ import ConfirmDialog from '@/components/layout/ConfirmDialog';
 import MatchCard from '@/components/round/MatchCard';
 import SortableMatchCard from '@/components/round/SortableMatchCard';
 import RoundProgressBar from '@/components/round/RoundProgressBar';
+import AddPlayersDialog from '@/components/round/AddPlayersDialog';
 import StandingsTable from '@/components/standings/StandingsTable';
 import { useTournament } from '@/hooks/useTournament';
 import { useStandings } from '@/hooks/useStandings';
@@ -79,9 +80,13 @@ export default function RoundPage() {
   const displayNonBye = useMemo(() => {
     if (!manualMatchOrder) return nonByeSorted;
     const matchMap = new Map(nonByeSorted.map((m) => [m.id, m]));
-    return manualMatchOrder
+    const ordered = manualMatchOrder
       .map((id) => matchMap.get(id))
       .filter((m): m is NonNullable<typeof m> => m != null);
+    // Matches created after the manual sort (adding players) are absent from it;
+    // append them so they are not dropped from the list.
+    const orderedIds = new Set(ordered.map((m) => m.id));
+    return [...ordered, ...nonByeSorted.filter((m) => !orderedIds.has(m.id))];
   }, [manualMatchOrder, nonByeSorted]);
 
   if (!tournament) return null;
@@ -237,6 +242,12 @@ export default function RoundPage() {
     setDropTarget(null);
   };
 
+  const handleAddPlayers = (names: string[]) => {
+    dispatch({ type: 'ADD_PLAYERS_TO_ROUND', payload: { tournamentId, roundNumber, names } });
+    // The new matches are not part of the manual order, so fall back to auto sort.
+    setManualMatchOrder(null);
+  };
+
   const handleReshuffle = () => {
     const newRound = generatePairings(tournament.players, [], tournament.bestOf, tournament.players);
     dispatch({ type: 'RESHUFFLE_ROUND', payload: { tournamentId, round: newRound } });
@@ -268,6 +279,10 @@ export default function RoundPage() {
   };
 
   const canDrop = isLatestRound && !round.isCompleted;
+
+  const activePlayerCount = tournament.players.filter((p) => p.status === 'active').length;
+  const byePlayerName =
+    tournament.players.find((p) => p.id === byeMatches[0]?.player1Id)?.name ?? null;
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     if (newValue === standingsTabIndex) {
@@ -390,6 +405,16 @@ export default function RoundPage() {
                 >
                   ペアリングを再生成
                 </Button>
+              </Box>
+            )}
+
+            {roundNumber === 1 && !round.isCompleted && (
+              <Box sx={{ mt: 2 }}>
+                <AddPlayersDialog
+                  activeCount={activePlayerCount}
+                  byePlayerName={byePlayerName}
+                  onAdd={handleAddPlayers}
+                />
               </Box>
             )}
 
